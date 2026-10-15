@@ -1,65 +1,86 @@
 import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="relative min-h-dvh overflow-hidden bg-[#F8FAFC]">
+      {/* Decorative top-left shape */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-[75px] -top-[105px] h-[230px] w-[230px] rounded-full bg-[#E4F9EB]"
+      />
+
+      {/* Decorative right shape */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-[175px] top-[165px] h-[360px] w-[360px] rounded-full bg-[#EAFBF0]"
+      />
+
+      {/* Main content */}
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-md flex-col px-6">
+        {/* Logo */}
+        <div className="flex justify-center pt-[100px]">
+          <Image
+            src="/images/matchup-logo.png"
+            alt="MatchUp"
+            width={240}
+            height={140}
+            priority
+            className="h-auto w-[190px]"
+          />
+        </div>
+
+        {/* Heading */}
+        <div className="mt-25 text-center">
+          <h1 className="whitespace-nowrap text-[26px] font-bold tracking-[-0.7px] text-[#07192D]">
+            Find. Match.{" "}
+            <span className="text-[#00B83F]">
+              Play.
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="mx-auto mt-3 max-w-[290px] text-[15px] leading-[22px] text-slate-500">
+            Find and organise matches and
+            <br />
+            tournaments across all sports.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Actions */}
+        <div className="mt-15 w-full">
+          <Link
+            href="/register"
+            className="flex h-12 w-full items-center justify-center rounded-full bg-[#00B83F] text-sm font-semibold text-white shadow-sm transition hover:bg-[#00A638] active:scale-[0.99]"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Get Started
+          </Link>
+
+          <p className="mt-5 text-center text-[13px] text-slate-500">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="font-semibold text-[#00B83F] transition hover:text-[#00A638]"
+            >
+              Log in
+            </Link>
+          </p>
         </div>
-      </main>
-    </div>
+      </div>
+
+      {/* Sports image */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[175px] overflow-hidden">
+        <Image
+          src="/images/matchup-sports.png"
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 448px) 100vw, 448px"
+          className="object-cover object-center"
+        />
+
+        {/* Fade image smoothly into page */}
+        <div className="absolute inset-x-0 top-0 h-[55px] bg-gradient-to-b from-[#F8FAFC] via-[#F8FAFC]/60 to-transparent" />
+      </div>
+    </main>
   );
 }

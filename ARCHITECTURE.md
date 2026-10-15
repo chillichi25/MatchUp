@@ -2,7 +2,7 @@
 
 ## Vision
 
-MatchUp is a mobile-first platform that helps grassroots football clubs organise friendlies and tournaments quickly and efficiently.
+MatchUp is a mobile app that helps grassroots football clubs organise friendlies and tournaments quickly and efficiently.
 
 The first version focuses on solving one problem:
 
@@ -20,7 +20,7 @@ Helping coaches find and organise matches.
 * Find Tournaments
 * Post Tournaments
 * Messaging
-* AI Assistant
+
 
 ---
 
@@ -99,11 +99,9 @@ messages
 
 Frontend
 
-* Next.js
-* React
+* react native (expo)
 * TypeScript
-* Tailwind CSS
-* shadcn/ui
+* nativewind
 
 Backend
 
@@ -112,16 +110,10 @@ Backend
 * Authentication
 * Storage
 * Realtime
-
-AI
-
-* OpenAI API
-
 ---
 
 ## Development Principles
 
-* Mobile-first
 * Feature-based architecture
 * Reusable components
 * TypeScript everywhere
