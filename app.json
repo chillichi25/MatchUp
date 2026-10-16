@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "MatchUp",
+    "slug": "matchup",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "matchup",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.matchup.app"
+    },
+    "android": {
+      "package": "com.matchup.app",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/matchup-logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/matchup-logo.png",
+          "imageWidth": 180
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
