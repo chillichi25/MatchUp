@@ -1,5 +1,5 @@
-import { AuthPlaceholderScreen } from "@/features/auth/components/auth-placeholder";
+import { LoginForm } from "@/features/auth/components/login-form";
 
 export default function LoginScreen() {
-  return <AuthPlaceholderScreen title="Log in" phase="Phase 1" />;
+  return <LoginForm />;
 }

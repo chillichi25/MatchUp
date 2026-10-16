@@ -13,7 +13,7 @@ export default function LandingScreen() {
   }
 
   if (session) {
-    return <Redirect href="/dashboard" />;
+    return <Redirect href="/onboarding" />;
   }
 
   return (

@@ -1,5 +1,14 @@
-import { AuthPlaceholderScreen } from "@/features/auth/components/auth-placeholder";
+import { useLocalSearchParams } from "expo-router";
+
+import { VerifyEmailView } from "@/features/auth/components/verify-email-view";
 
 export default function VerifyEmailScreen() {
-  return <AuthPlaceholderScreen title="Verify email" phase="Phase 1" />;
+  const { verified, error } = useLocalSearchParams<{
+    verified?: string;
+    error?: string;
+  }>();
+
+  return (
+    <VerifyEmailView verified={verified === "true"} hasError={Boolean(error)} />
+  );
 }

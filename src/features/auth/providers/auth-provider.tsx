@@ -9,6 +9,7 @@ import {
 
 import type { Session } from "@supabase/supabase-js";
 
+import { queryClient } from "@/lib/query/query-client";
 import { supabase } from "@/lib/supabase/client";
 
 type AuthContextValue = {
@@ -40,8 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
+      (event, nextSession) => {
         setSession(nextSession);
+
+        // An expired or revoked session must not leave private cached
+        // content visible. Drop all cached server reads on sign out.
+        if (event === "SIGNED_OUT") {
+          queryClient.clear();
+        }
       }
     );
 
