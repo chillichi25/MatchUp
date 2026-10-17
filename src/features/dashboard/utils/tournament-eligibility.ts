@@ -1,3 +1,5 @@
+import { checkTournamentEligibility } from "@/features/tournaments/utils/eligibility";
+
 export type TournamentEligibilityInput = {
   teamAgeGroup: string | null;
   tournamentAgeGroup: string | null;
@@ -13,27 +15,10 @@ export type TournamentEligibilityInput = {
 export function isTournamentEligible(
   input: TournamentEligibilityInput
 ): boolean {
-  if (
-    input.teamAgeGroup &&
-    input.tournamentAgeGroup &&
-    input.teamAgeGroup.trim().toLowerCase() !==
-      input.tournamentAgeGroup.trim().toLowerCase()
-  ) {
-    return false;
-  }
-
-  const teamGender = input.teamGender?.trim().toLowerCase() ?? null;
-  const tournamentGender =
-    input.tournamentGender?.trim().toLowerCase() ?? null;
-
-  if (
-    teamGender &&
-    tournamentGender &&
-    tournamentGender !== "mixed" &&
-    teamGender !== tournamentGender
-  ) {
-    return false;
-  }
-
-  return true;
+  return checkTournamentEligibility({
+    teamAgeGroup: input.teamAgeGroup,
+    tournamentAgeGroup: input.tournamentAgeGroup,
+    teamGender: input.teamGender,
+    tournamentGender: input.tournamentGender,
+  }).eligible;
 }

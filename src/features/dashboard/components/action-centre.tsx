@@ -81,7 +81,7 @@ export function ActionCentre({
 
       <View className="mt-3 gap-3">
         <ActionRow
-          onPress={() => router.push("/matches")}
+          onPress={() => router.push("/friendlies/requests" as never)}
           iconBackground="bg-green-50"
           icon={<Mail size={24} strokeWidth={2.2} color="#00B83F" />}
           title="Match Requests"
@@ -90,7 +90,7 @@ export function ActionCentre({
         />
 
         <ActionRow
-          onPress={() => router.push("/matches")}
+          onPress={() => router.push("/friendlies/sent" as never)}
           iconBackground="bg-amber-50"
           icon={<Clock3 size={25} strokeWidth={2.2} color="#F59E0B" />}
           title="Awaiting Response"

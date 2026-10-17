@@ -7,9 +7,13 @@ import {
   User,
 } from "lucide-react-native";
 
+import { useUnreadChatCount } from "@/features/chat/hooks/use-chat";
 import { colors } from "@/theme/tokens";
 
 export default function TabsLayout() {
+  const unread = useUnreadChatCount();
+  const unreadCount = unread.data ?? 0;
+
   return (
     <Tabs
       screenOptions={{
@@ -61,6 +65,13 @@ export default function TabsLayout() {
         name="chat"
         options={{
           title: "Chat",
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.brand,
+            color: "#FFFFFF",
+            fontSize: 10,
+            fontWeight: "700",
+          },
           tabBarIcon: ({ color, focused }) => (
             <MessageCircle
               color={color}

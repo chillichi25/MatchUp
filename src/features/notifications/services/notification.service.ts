@@ -1,6 +1,31 @@
 import { supabase } from "@/lib/supabase/client";
 
-import type { AppNotification } from "../types";
+import type { AppNotification, NotificationType } from "../types";
+
+/**
+ * Best-effort in-app notification. Failures are logged but never thrown so a
+ * notification problem cannot fail the business action that triggered it.
+ */
+export async function createNotification(input: {
+  userId: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  relatedId?: string | null;
+}): Promise<void> {
+  const { error } = await supabase.from("notifications").insert({
+    user_id: input.userId,
+    title: input.title,
+    message: input.message,
+    type: input.type,
+    related_id: input.relatedId ?? null,
+    is_read: false,
+  });
+
+  if (error) {
+    console.error("CREATE NOTIFICATION ERROR:", error);
+  }
+}
 
 export async function getNotifications(): Promise<AppNotification[]> {
   const {

@@ -166,7 +166,7 @@ export default function MatchDetailScreen() {
 
           {match.conversationId ? (
             <View className="mt-3">
-              <Button onPress={() => router.push("/chat" as never)}>
+              <Button onPress={() => router.push(`/chat/${match.conversationId}` as never)}>
                 Open Chat
               </Button>
             </View>

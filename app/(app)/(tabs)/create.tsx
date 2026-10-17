@@ -42,29 +42,29 @@ export default function CreateScreen() {
             </View>
           </Pressable>
 
-          <View className="min-h-[104px] flex-row overflow-hidden rounded-2xl border border-violet-100 bg-white opacity-70 shadow-sm">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Create a tournament"
+            onPress={() => router.push("/create/tournament" as never)}
+            className="min-h-[104px] flex-row overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm"
+          >
             <View className="w-[68px] items-center justify-center bg-violet-50">
               <Trophy size={27} color="#7C3AED" strokeWidth={2} />
             </View>
 
             <View className="min-w-0 flex-1 flex-row items-center gap-3 px-4 py-4">
               <View className="min-w-0 flex-1">
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-[16px] font-bold leading-tight text-slate-950">
-                    Create a Tournament
-                  </Text>
-                  <View className="rounded-full bg-violet-50 px-2 py-1">
-                    <Text className="text-[9px] font-bold text-violet-600">
-                      Soon
-                    </Text>
-                  </View>
-                </View>
+                <Text className="text-[16px] font-bold leading-tight text-slate-950">
+                  Create a Tournament
+                </Text>
                 <Text className="mt-1.5 text-[13px] leading-[18px] text-slate-500">
                   Organise a tournament and invite teams.
                 </Text>
               </View>
+
+              <ChevronRight size={20} color="#94A3B8" />
             </View>
-          </View>
+          </Pressable>
         </View>
       </View>
     </Screen>

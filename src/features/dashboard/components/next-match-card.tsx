@@ -78,7 +78,7 @@ export function NextMatchCard({ match }: { match: DashboardMatch }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="View match"
-          onPress={() => router.push("/matches")}
+          onPress={() => router.push(`/matches/${match.id}` as never)}
           className="h-10 flex-1 items-center justify-center rounded-full border border-slate-300 bg-white"
         >
           <Text className="text-[13px] font-semibold text-slate-950">
@@ -90,7 +90,7 @@ export function NextMatchCard({ match }: { match: DashboardMatch }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Open chat"
-            onPress={() => router.push("/chat")}
+            onPress={() => router.push(`/chat/${match.conversationId}` as never)}
             className="h-10 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-[#00B83F]"
           >
             <MessageCircle size={17} strokeWidth={2} color="#FFFFFF" />

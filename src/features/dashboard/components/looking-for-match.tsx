@@ -113,7 +113,7 @@ function TournamentRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${tournament.name} tournament`}
-      onPress={() => router.push("/matches")}
+      onPress={() => router.push(`/tournaments/${tournament.id}` as never)}
       className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
     >
       <View className="flex-row items-center gap-3">

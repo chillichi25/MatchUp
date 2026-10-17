@@ -75,7 +75,7 @@ export function DashboardActions() {
 
           <ActionCard
             accessibilityLabel="Find a Tournament"
-            onPress={() => router.push("/matches")}
+            onPress={() => router.push("/tournaments" as never)}
             className="border-blue-200 bg-blue-50"
             icon={<Trophy size={31} strokeWidth={2.2} color="#2563EB" />}
             title="Find a Tournament"
@@ -86,7 +86,7 @@ export function DashboardActions() {
         <View className="flex-row gap-3">
           <ActionCard
             accessibilityLabel="Create a Match"
-            onPress={() => router.push("/create")}
+            onPress={() => router.push("/create/friendly" as never)}
             className="border-green-100 bg-green-50/50"
             icon={
               <View className="h-[29px] w-[29px] items-center justify-center rounded-full bg-green-500">
@@ -99,7 +99,7 @@ export function DashboardActions() {
 
           <ActionCard
             accessibilityLabel="Create a Tournament"
-            onPress={() => router.push("/create")}
+            onPress={() => router.push("/create/tournament" as never)}
             className="border-violet-100 bg-violet-50/50"
             icon={
               <View className="h-[29px] w-[29px] items-center justify-center rounded-full border-2 border-violet-400">

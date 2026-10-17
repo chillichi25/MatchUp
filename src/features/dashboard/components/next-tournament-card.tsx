@@ -72,7 +72,7 @@ export function NextTournamentCard({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="View tournament"
-        onPress={() => router.push("/matches")}
+        onPress={() => router.push(`/tournaments/${tournament.id}` as never)}
         className="mt-5 h-12 w-full items-center justify-center rounded-2xl bg-[#00B83F]"
       >
         <Text className="font-semibold text-white">View Tournament</Text>

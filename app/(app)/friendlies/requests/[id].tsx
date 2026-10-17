@@ -256,7 +256,13 @@ export default function FriendlyRequestDetailScreen() {
                 variant="outline"
                 textClassName="text-brand"
                 className="border-brand"
-                onPress={() => router.push("/chat" as never)}
+                onPress={() =>
+                  router.push(
+                    (request.conversationId
+                      ? `/chat/${request.conversationId}`
+                      : "/chat") as never
+                  )
+                }
               >
                 Open Chat
               </Button>
