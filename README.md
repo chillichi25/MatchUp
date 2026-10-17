@@ -26,7 +26,6 @@ src/
   theme/        Colour/radius/spacing tokens
 assets/         Logos and images
 supabase/       Database assets (deferred; existing project reused)
-legacy/         Previous Next.js implementation (reference only, excluded)
 ```
 
 ## Environment
@@ -52,6 +51,13 @@ npm test           # jest
 
 ## Status
 
-Conversion is in progress. See the phase plan in the task history:
-foundation → authentication → clubs/teams → friendlies/matches → tournaments →
-chat/activity/profile → hardening.
+Conversion from the original Next.js web application is complete. The app now
+covers authentication, clubs/teams membership, friendlies and matches,
+tournaments, event-linked chat, notifications and profile. The previous
+implementation has been removed.
+
+Reused as-is against the existing remote Supabase project. Live end-to-end
+behaviour, geocoding (via the `locations-search` Edge Function) and Realtime
+require real credentials and cannot be verified with the placeholder `.env`.
+See `docs/ARCHITECTURE.md` for the source of truth and the phase reports for
+what was verified.
