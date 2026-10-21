@@ -36,6 +36,14 @@ Copy `.env.example` to `.env` and provide the Supabase project values:
 EXPO_PUBLIC_SUPABASE_URL=...
 EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 GEOAPIFY_API_KEY=...   # server-side only (Edge Function), never shipped in the app
+
+# RevenueCat public SDK keys (safe to ship). Leave blank to disable billing.
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=appl_...
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=goog_...
+
+# Optional links for the Plans screen (store compliance).
+EXPO_PUBLIC_TERMS_URL=...
+EXPO_PUBLIC_PRIVACY_URL=...
 ```
 
 ## Scripts
@@ -48,6 +56,18 @@ npm run typecheck  # tsc --noEmit
 npm run lint       # expo lint
 npm test           # jest
 ```
+
+## Subscription (RevenueCat)
+
+Plans are purchased through RevenueCat and displayed on the Plans screen.
+RevenueCat requires a development build (`expo run:ios`/`expo run:android` or
+EAS); Expo Go only previews the purchase flow. Configure the entitlements
+`team_pro`, `club` and `club_pro`, a default offering, and the monthly products
+`matchup_team_pro_monthly`, `matchup_club_monthly` and
+`matchup_club_pro_monthly` in the RevenueCat dashboard before testing purchases.
+
+The selected plan is mirrored to Supabase Auth `user_metadata.subscription_plan`
+for display. Plan limits are not enforced in the app yet.
 
 ## Status
 

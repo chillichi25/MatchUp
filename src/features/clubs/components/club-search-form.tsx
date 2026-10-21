@@ -156,7 +156,7 @@ export function ClubSearchForm() {
 
           <Button
             className="mt-5"
-            fullWidth={false}
+            fullWidth={true}
             onPress={() => router.push("/clubs/create")}
           >
             Create a club
