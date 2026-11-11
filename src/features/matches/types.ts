@@ -23,6 +23,7 @@ export type MatchSummary = {
 
   conversationId: string | null;
   isPast: boolean;
+  hasPendingResult?: boolean;
 };
 
 export type MatchDetail = MatchSummary & {

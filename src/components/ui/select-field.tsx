@@ -2,11 +2,14 @@ import { Check, ChevronDown } from "lucide-react-native";
 import { useState } from "react";
 import {
   FlatList,
+  Keyboard,
   Modal,
   Pressable,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cn } from "@/lib/utils";
 
@@ -27,6 +30,10 @@ type SelectFieldProps = {
   containerClassName?: string;
 };
 
+const NAVY = "#07192D";
+const GREEN = "#009E45";
+const MUTED = "#596B80";
+
 export function SelectField({
   label,
   value,
@@ -38,105 +45,317 @@ export function SelectField({
   disabled = false,
   containerClassName,
 }: SelectFieldProps) {
+  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
-  const selected = options.find((option) => option.value === value);
+
+  const selected = options.find(
+    (option) => option.value === value
+  );
+
+  function close() {
+    setOpen(false);
+  }
 
   return (
     <View className={cn("w-full", containerClassName)}>
       {label ? (
-        <Text className="mb-1.5 text-[13px] font-medium text-slate-700">
-          {label}
-        </Text>
+        <Text style={styles.label}>{label}</Text>
       ) : null}
 
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled, expanded: open }}
         accessibilityLabel={label ?? placeholder}
+        accessibilityValue={{
+          text: selected?.label ?? placeholder,
+        }}
         disabled={disabled}
-        onPress={() => setOpen(true)}
-        className={cn(
-          "h-12 w-full flex-row items-center justify-between rounded-2xl border bg-white px-4",
-          error ? "border-red-400" : "border-slate-200",
-          disabled && "opacity-50"
-        )}
+        onPress={() => {
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
+        style={[
+          styles.field,
+          error ? styles.fieldError : null,
+          open ? styles.fieldOpen : null,
+          disabled ? styles.disabled : null,
+        ]}
       >
         <Text
-          className={cn(
-            "text-[15px]",
-            selected ? "text-slate-900" : "text-slate-400"
-          )}
+          numberOfLines={1}
+          style={[
+            styles.fieldText,
+            { color: selected ? NAVY : "#7B8798" },
+          ]}
         >
           {selected?.label ?? placeholder}
         </Text>
 
-        <ChevronDown size={18} color="#94A3B8" strokeWidth={2} />
+        <ChevronDown
+          size={18}
+          color="#7B8798"
+          strokeWidth={1.8}
+        />
       </Pressable>
 
       {error ? (
-        <Text className="mt-1.5 text-[12px] text-red-600">{error}</Text>
+        <Text
+          accessibilityRole="alert"
+          style={styles.errorText}
+        >
+          {error}
+        </Text>
       ) : helperText ? (
-        <Text className="mt-1.5 text-[12px] text-slate-400">{helperText}</Text>
+        <Text style={styles.helperText}>{helperText}</Text>
       ) : null}
 
       <Modal
-        visible={open}
+        visible={open && !disabled}
         transparent
         animationType="slide"
-        onRequestClose={() => setOpen(false)}
+        onRequestClose={close}
       >
-        <Pressable
-          className="flex-1 justify-end bg-black/40"
-          onPress={() => setOpen(false)}
-        >
-          <Pressable className="max-h-[70%] rounded-t-3xl bg-white pb-8 pt-3">
-            <View className="mb-2 items-center">
-              <View className="h-1 w-10 rounded-full bg-slate-200" />
+        <View style={styles.modal}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close selection"
+            onPress={close}
+            style={{
+  position: "absolute",
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+}}
+          />
+
+          <View
+            accessibilityViewIsModal
+            style={[
+              styles.sheet,
+              {
+                paddingBottom: Math.max(insets.bottom, 16),
+              },
+            ]}
+          >
+            <View style={styles.handleContainer}>
+              <View style={styles.handle} />
             </View>
 
-            {label ? (
-              <Text className="px-5 pb-3 text-[15px] font-semibold text-slate-900">
-                {label}
+            <View style={styles.sheetHeader}>
+              <Text
+                accessibilityRole="header"
+                style={styles.sheetTitle}
+              >
+                {label ?? placeholder}
               </Text>
-            ) : null}
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close selection"
+                onPress={close}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeText}>Close</Text>
+              </Pressable>
+            </View>
 
             <FlatList
               data={options}
+              extraData={value}
               keyExtractor={(item) => item.value}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+              contentContainerStyle={styles.listContent}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>
+                  No options available.
+                </Text>
+              }
               renderItem={({ item }) => {
                 const isSelected = item.value === value;
 
                 return (
                   <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      checked: isSelected,
+                    }}
                     onPress={() => {
                       onChange(item.value);
-                      setOpen(false);
+                      close();
                     }}
-                    className="flex-row items-center justify-between px-5 py-3.5"
+                    style={[
+                      styles.option,
+                      isSelected
+                        ? styles.selectedOption
+                        : null,
+                    ]}
                   >
                     <Text
-                      className={cn(
-                        "text-[15px]",
+                      style={[
+                        styles.optionText,
                         isSelected
-                          ? "font-semibold text-[#00B83F]"
-                          : "text-slate-800"
-                      )}
+                          ? styles.selectedOptionText
+                          : null,
+                      ]}
                     >
                       {item.label}
                     </Text>
 
-                    {isSelected ? (
-                      <Check size={18} color="#00B83F" strokeWidth={2.4} />
-                    ) : null}
+                    <View style={styles.checkContainer}>
+                      {isSelected ? (
+                        <Check
+                          size={20}
+                          color={GREEN}
+                          strokeWidth={2.4}
+                        />
+                      ) : null}
+                    </View>
                   </Pressable>
                 );
               }}
             />
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  label: {
+    marginBottom: 4,
+    color: NAVY,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  field: {
+    height: 56,
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+  },
+  fieldOpen: {
+    borderColor: GREEN,
+  },
+  fieldError: {
+    borderColor: "#F87171",
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  fieldText: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 16,
+  },
+  helperText: {
+    marginTop: 6,
+    color: MUTED,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  errorText: {
+    marginTop: 6,
+    color: "#DC2626",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  modal: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(7, 25, 45, 0.35)",
+  },
+  sheet: {
+    maxHeight: "70%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  handleContainer: {
+    paddingTop: 12,
+    paddingBottom: 8,
+    alignItems: "center",
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#CBD5E1",
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingLeft: 24,
+    paddingRight: 12,
+    paddingBottom: 8,
+  },
+  sheetTitle: {
+    flex: 1,
+    color: NAVY,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  closeButton: {
+    minWidth: 48,
+    minHeight: 48,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  closeText: {
+    color: GREEN,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  listContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  option: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    marginBottom: 4,
+    borderRadius: 12,
+  },
+  selectedOption: {
+    backgroundColor: "#E4F5EB",
+  },
+  optionText: {
+    flex: 1,
+    color: NAVY,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  selectedOptionText: {
+    color: GREEN,
+    fontWeight: "600",
+  },
+  checkContainer: {
+    width: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyText: {
+    padding: 16,
+    color: MUTED,
+    fontSize: 14,
+    textAlign: "center",
+  },
+});

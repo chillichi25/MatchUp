@@ -1,15 +1,34 @@
-import { CalendarDays, ChevronRight, Shield } from "lucide-react-native";
+import { ChevronRight, Clock } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 
 import { Avatar } from "@/components/ui/avatar";
+import {
+  formatDateWithYear,
+  formatKickOff,
+  getDateParts,
+} from "@/features/friendlies/utils/format";
 
 import type { MatchHistoryItem } from "../types";
-import { formatKickOff, formatLongDate } from "@/features/friendlies/utils/format";
 
-const resultStyles = {
-  win: { badge: "bg-green-100", text: "text-[#00A638]", label: "Won" },
-  draw: { badge: "bg-slate-100", text: "text-slate-600", label: "Draw" },
-  loss: { badge: "bg-red-100", text: "text-red-500", label: "Lost" },
+const NAVY = "#07192D";
+const MUTED = "#596B80";
+
+const RESULT_STYLES = {
+  win: {
+    background: "#E4F5EB",
+    color: "#007A35",
+    label: "Won",
+  },
+  draw: {
+    background: "#F1F5F9",
+    color: "#475569",
+    label: "Drawn",
+  },
+  loss: {
+    background: "#FEF2F2",
+    color: "#B91C1C",
+    label: "Lost",
+  },
 } as const;
 
 type MatchHistoryCardProps = {
@@ -17,108 +36,233 @@ type MatchHistoryCardProps = {
   onPress: () => void;
 };
 
-export function MatchHistoryCard({ item, onPress }: MatchHistoryCardProps) {
-  if (item.status === "completed" && item.result && item.myScore !== null) {
-    const style = resultStyles[item.result];
+export function MatchHistoryCard({
+  item,
+  onPress,
+}: MatchHistoryCardProps) {
+  const isCancelled = item.status === "cancelled";
 
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${item.opponent.clubName} result`}
-        onPress={onPress}
-        className="flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
-      >
-        <Avatar
-          uri={item.opponent.badgeUrl}
-          name={item.opponent.clubName}
-          size={44}
-        />
+  const hasScore =
+    item.status === "completed" &&
+    item.myScore != null &&
+    item.opponentScore != null;
 
-        <View className="min-w-0 flex-1">
-          <Text numberOfLines={1} className="text-[13px] font-bold text-slate-950">
-            {item.opponent.clubName}
-          </Text>
+  const resultStyle =
+    !isCancelled && item.result
+      ? RESULT_STYLES[item.result]
+      : null;
 
-          <Text numberOfLines={1} className="mt-0.5 text-[11px] text-slate-500">
-            {item.opponent.teamName}
-          </Text>
+  const badge = isCancelled
+    ? {
+        background: "#FEF2F2",
+        color: "#B91C1C",
+        label: "Cancelled",
+      }
+    : resultStyle ?? {
+        background: "#EFF6FF",
+        color: "#1D4ED8",
+        label: "Completed",
+      };
 
-          <View className={`mt-1.5 self-start rounded-full px-2 py-0.5 ${style.badge}`}>
-            <Text className={`text-[9px] font-semibold ${style.text}`}>
-              {style.label}
-            </Text>
-          </View>
-        </View>
+  const teamName = item.opponent.teamName?.trim();
+  const clubName = item.opponent.clubName?.trim();
+  const title = teamName || clubName || "Opponent";
 
-        <View className="shrink-0 flex-row items-center gap-2">
-          <Text className="text-[15px] font-bold tracking-wide text-slate-950">
-            <Text
-              className={
-                item.result === "win"
-                  ? "text-[#00B83F]"
-                  : item.result === "loss"
-                    ? "text-red-500"
-                    : "text-slate-950"
-              }
-            >
-              {item.myScore}
-            </Text>
-            <Text className="text-slate-700"> - </Text>
-            {item.opponentScore}
-          </Text>
+  const date = getDateParts(item.matchDate);
+  const fullDate = formatDateWithYear(item.matchDate);
+  const year = item.matchDate.slice(0, 4);
 
-          <ChevronRight size={18} color="#94A3B8" strokeWidth={2} />
-        </View>
-      </Pressable>
-    );
-  }
+  const kickOff = item.kickOffTime
+    ? formatKickOff(item.kickOffTime)
+    : "";
 
-  const kickOff = formatKickOff(item.kickOffTime);
+  const scoreColor =
+    item.result === "win"
+      ? RESULT_STYLES.win.color
+      : item.result === "loss"
+        ? RESULT_STYLES.loss.color
+        : NAVY;
+
+  const cancellationText = item.cancelledByMyTeam
+    ? "Cancelled by your team"
+    : "Cancelled by the other team";
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.opponent.clubName}, cancelled`}
+      accessibilityLabel={[
+        `Match against ${title}`,
+        teamName && clubName ? clubName : null,
+        badge.label,
+        hasScore
+          ? `Final score. Your team ${item.myScore}, opponent ${item.opponentScore}`
+          : null,
+        fullDate,
+        kickOff,
+        isCancelled ? cancellationText : null,
+        !isCancelled && !hasScore ? "Score not recorded" : null,
+      ]
+        .filter(Boolean)
+        .join(". ")}
+      accessibilityHint="Opens match details"
       onPress={onPress}
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="overflow-hidden rounded-2xl border border-[#CBD5E1] bg-white"
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.75 : 1,
+      })}
     >
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1 flex-row items-center gap-4">
-          <View className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white">
-            <Shield size={22} color="#94A3B8" />
-          </View>
+      <View className="flex-row">
+        <View className="w-[54px] items-center justify-center border-r border-slate-100 bg-slate-50 px-1 py-4">
+          <Text
+            className="text-[9px] font-semibold uppercase tracking-wide"
+            style={{ color: MUTED }}
+          >
+            {date.weekday}
+          </Text>
 
-          <View className="min-w-0 flex-1">
-            <Text numberOfLines={1} className="font-bold leading-5 text-slate-950">
-              {item.opponent.clubName}
-            </Text>
-            <Text numberOfLines={1} className="mt-1 text-sm text-slate-500">
-              {item.opponent.teamName}
-            </Text>
-          </View>
+          <Text
+            className="my-0.5 text-[25px] font-bold leading-8"
+            style={{
+              color: "#009E45",
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {date.day}
+          </Text>
+
+          <Text
+            className="text-[9px] font-semibold uppercase tracking-wide"
+            style={{ color: MUTED }}
+          >
+            {date.month}
+          </Text>
+
+          <Text
+            className="mt-1 text-[9px]"
+            style={{ color: MUTED }}
+          >
+            {year}
+          </Text>
         </View>
 
-        <View className="flex-row items-center gap-3">
-          <View className="rounded-full bg-red-100 px-3 py-1">
-            <Text className="text-xs font-semibold text-red-700">Cancelled</Text>
-          </View>
-          <ChevronRight size={19} color="#94A3B8" />
-        </View>
-      </View>
+        <View className="min-w-0 flex-1 px-3 py-4">
+          <View className="flex-row items-center gap-2.5">
+            <Avatar
+              uri={item.opponent.badgeUrl}
+              name={clubName || title}
+              size={40}
+            />
 
-      <View className="mt-4 flex-row items-center gap-2">
-        <CalendarDays size={16} color="#00B83F" />
-        <Text className="text-sm text-slate-500">
-          {formatLongDate(item.matchDate)}
-          {kickOff ? ` · ${kickOff}` : ""}
+            <View className="min-w-0 flex-1">
+              <Text
+                numberOfLines={2}
+                className="text-[14px] font-bold leading-[19px]"
+                style={{ color: NAVY }}
+              >
+                {title}
+              </Text>
+
+              {teamName && clubName ? (
+                <Text
+                  numberOfLines={2}
+                  className="mt-0.5 text-[11px] leading-4"
+                  style={{ color: MUTED }}
+                >
+                  {clubName}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          {kickOff ? (
+  <View className="mt-3 flex-row items-center gap-1">
+    <Clock size={12} color={MUTED} strokeWidth={1.8} />
+
+    <Text
+      className="text-[11px]"
+      style={{ color: MUTED }}
+    >
+      {kickOff}
+    </Text>
+  </View>
+) : null}
+
+          {isCancelled ? (
+            <Text
+              className="mt-2 text-[11px] leading-4"
+              style={{ color: MUTED }}
+            >
+              {cancellationText}
+            </Text>
+          ) : !hasScore ? (
+            <Text
+              className="mt-2 text-[11px] leading-4"
+              style={{ color: MUTED }}
+            >
+              Score not recorded
+            </Text>
+          ) : null}
+        </View>
+
+        <View className="w-[108px] justify-between py-4 pr-9">
+  <View
+    className="self-end rounded-full px-2.5 py-1"
+    style={{ backgroundColor: badge.background }}
+  >
+    <Text
+      className="text-[10px] font-semibold"
+      style={{ color: badge.color }}
+    >
+      {badge.label}
+    </Text>
+  </View>
+
+  <View className="mt-3 flex-row items-center justify-end gap-2">
+    {hasScore ? (
+      <View className="items-center">
+        <Text
+          className="mb-1 text-[9px] font-medium"
+          style={{ color: MUTED }}
+        >
+          You – Opp
+        </Text>
+
+        <Text
+          className="text-[20px] font-bold leading-7"
+          style={{ fontVariant: ["tabular-nums"] }}
+        >
+          <Text style={{ color: scoreColor }}>
+            {item.myScore}
+          </Text>
+          <Text style={{ color: MUTED }}> – </Text>
+          <Text style={{ color: NAVY }}>
+            {item.opponentScore}
+          </Text>
         </Text>
       </View>
+    ) : null}
 
-      <Text className="mt-3 text-sm text-slate-500">
-        {item.cancelledByMyTeam
-          ? "Cancelled by your team"
-          : "Cancelled by opponent"}
-      </Text>
+  </View>
+</View>
+      </View>
+      <View
+  pointerEvents="none"
+  accessibilityElementsHidden
+  importantForAccessibility="no-hide-descendants"
+  style={{
+    position: "absolute",
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  }}
+>
+  <ChevronRight
+    size={17}
+    color={MUTED}
+    strokeWidth={1.8}
+  />
+</View>
     </Pressable>
   );
 }

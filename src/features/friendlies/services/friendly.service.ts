@@ -235,6 +235,16 @@ export async function getFriendlyDiscovery(
 
   const today = todayIso();
 
+// Calculate this Sunday's date using calendar-day arithmetic.
+const weekEnd = new Date(`${today}T00:00:00Z`);
+const daysUntilSunday = (7 - weekEnd.getUTCDay()) % 7;
+
+weekEnd.setUTCDate(
+  weekEnd.getUTCDate() + daysUntilSunday
+);
+
+const thisWeekEnd = weekEnd.toISOString().slice(0, 10);
+
   const { data, error } = await supabase
     .from("friendlies")
     .select(FRIENDLY_SELECT)
@@ -287,6 +297,15 @@ export async function getFriendlyDiscovery(
     if (filters.gender && listing.gender !== filters.gender) return false;
     if (filters.format && listing.matchFormat !== filters.format) return false;
     if (filters.date && listing.matchDate !== filters.date) return false;
+    if (
+  filters.quick === "this-week" &&
+  (
+    listing.matchDate < today ||
+    listing.matchDate > thisWeekEnd
+  )
+) {
+  return false;
+}
     if (filters.venue && listing.venueType !== filters.venue) return false;
 
     if (filters.distance && !distances.has(listing.id)) {

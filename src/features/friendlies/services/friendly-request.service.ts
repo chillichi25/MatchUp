@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 
+import { getActiveTeam } from "@/features/teams/services/active-team.service";
+
 import type {
   FriendlyRequestCounterparty,
   FriendlyRequestDetail,
@@ -8,7 +10,11 @@ import type {
   FriendlyStatus,
 } from "../types";
 
-type RawClub = { id: string; name: string; badge_url: string | null };
+type RawClub = {
+  id: string;
+  name: string;
+  badge_url: string | null;
+};
 
 type RawTeam = {
   id: string;
@@ -53,7 +59,7 @@ const REQUEST_SELECT = `
     status,
     created_by,
 
-    teams!friendlies_team_id_fkey (
+    teams!friendlies_team_id_fkey!inner (
       id,
       name,
 
@@ -98,10 +104,14 @@ function toStatus(value: string | null): FriendlyRequestStatus {
 }
 
 function toFriendlyStatus(value: string | null): FriendlyStatus {
-  return value === "matched" || value === "cancelled" ? value : "open";
+  return value === "matched" || value === "cancelled"
+    ? value
+    : "open";
 }
 
-function toCounterparty(team: RawTeam | null): FriendlyRequestCounterparty {
+function toCounterparty(
+  team: RawTeam | null
+): FriendlyRequestCounterparty {
   const club = first(team?.clubs);
 
   return {
@@ -112,7 +122,9 @@ function toCounterparty(team: RawTeam | null): FriendlyRequestCounterparty {
   };
 }
 
-function normalise(row: RawRequest): FriendlyRequestSummary | null {
+function normalise(
+  row: RawRequest
+): FriendlyRequestSummary | null {
   const friendly = first(row.friendlies);
 
   if (!friendly) {
@@ -148,23 +160,31 @@ export async function sendFriendlyRequest(input: {
   requestingTeamId: string;
   message?: string;
 }): Promise<{ id: string }> {
-  const { data, error } = await supabase.rpc("send_friendly_request", {
-    p_friendly_id: input.friendlyId,
-    p_requesting_team_id: input.requestingTeamId,
-    p_message: input.message?.trim() || null,
-  });
+  const { data, error } = await supabase.rpc(
+    "send_friendly_request",
+    {
+      p_friendly_id: input.friendlyId,
+      p_requesting_team_id: input.requestingTeamId,
+      p_message: input.message?.trim() || null,
+    }
+  );
 
   if (error) {
     console.error("SEND FRIENDLY REQUEST ERROR:", error);
 
     const message = error.message ?? "";
 
-    if (message.includes("already started or expired") || message.includes("no longer open")) {
+    if (
+      message.includes("already started or expired") ||
+      message.includes("no longer open")
+    ) {
       throw new Error("This friendly is no longer available.");
     }
 
     if (message.includes("already has a pending request")) {
-      throw new Error("Your team has already requested this friendly.");
+      throw new Error(
+        "Your team has already requested this friendly."
+      );
     }
 
     if (message.includes("already been accepted")) {
@@ -175,7 +195,9 @@ export async function sendFriendlyRequest(input: {
       throw new Error("You cannot request your own friendly.");
     }
 
-    throw new Error("We couldn't send your request. Please try again.");
+    throw new Error(
+      "We couldn't send your request. Please try again."
+    );
   }
 
   if (!data) {
@@ -186,7 +208,9 @@ export async function sendFriendlyRequest(input: {
 }
 
 async function expireOverdueRequests(): Promise<void> {
-  const { error } = await supabase.rpc("expire_friendly_requests");
+  const { error } = await supabase.rpc(
+    "expire_friendly_requests"
+  );
 
   if (error) {
     console.error("EXPIRE FRIENDLY REQUESTS ERROR:", error);
@@ -194,10 +218,12 @@ async function expireOverdueRequests(): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Incoming (requests made against my team's friendlies)               */
+/* Incoming: requests made against the active team's friendlies        */
 /* ------------------------------------------------------------------ */
 
-export async function getIncomingRequests(): Promise<FriendlyRequestSummary[]> {
+export async function getIncomingRequests(): Promise<
+  FriendlyRequestSummary[]
+> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -206,29 +232,42 @@ export async function getIncomingRequests(): Promise<FriendlyRequestSummary[]> {
     return [];
   }
 
+  const team = await getActiveTeam();
+
+  if (!team) {
+    return [];
+  }
+
   await expireOverdueRequests();
 
   const { data, error } = await supabase
     .from("friendly_requests")
     .select(REQUEST_SELECT)
-    .eq("friendlies.created_by", user.id)
+    .eq("friendlies.teams.id", team.id)
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("INCOMING FRIENDLY REQUESTS ERROR:", error);
-    return [];
+
+    throw new Error(
+      error.message || "Couldn't load requests for your team."
+    );
   }
 
   return ((data ?? []) as unknown as RawRequest[])
     .map(normalise)
-    .filter((row): row is FriendlyRequestSummary => row !== null);
+    .filter(
+      (row): row is FriendlyRequestSummary => row !== null
+    );
 }
 
 /* ------------------------------------------------------------------ */
-/* Outgoing (requests my team has sent)                                */
+/* Outgoing: requests sent by the active team                          */
 /* ------------------------------------------------------------------ */
 
-async function loadOutgoing(statuses: string[]): Promise<FriendlyRequestSummary[]> {
+async function loadOutgoing(
+  statuses: string[]
+): Promise<FriendlyRequestSummary[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -237,31 +276,51 @@ async function loadOutgoing(statuses: string[]): Promise<FriendlyRequestSummary[
     return [];
   }
 
+  const team = await getActiveTeam();
+
+  if (!team) {
+    return [];
+  }
+
   await expireOverdueRequests();
 
   const { data, error } = await supabase
     .from("friendly_requests")
     .select(REQUEST_SELECT)
-    .eq("requested_by", user.id)
+    .eq("requesting_team_id", team.id)
     .in("status", statuses)
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("OUTGOING FRIENDLY REQUESTS ERROR:", error);
-    return [];
+
+    throw new Error(
+      error.message || "Couldn't load your team's sent requests."
+    );
   }
 
   return ((data ?? []) as unknown as RawRequest[])
     .map(normalise)
-    .filter((row): row is FriendlyRequestSummary => row !== null);
+    .filter(
+      (row): row is FriendlyRequestSummary => row !== null
+    );
 }
 
-export function getOutgoingRequests(): Promise<FriendlyRequestSummary[]> {
+export function getOutgoingRequests(): Promise<
+  FriendlyRequestSummary[]
+> {
   return loadOutgoing(["pending"]);
 }
 
-export function getOutgoingRequestHistory(): Promise<FriendlyRequestSummary[]> {
-  return loadOutgoing(["accepted", "declined", "cancelled", "expired"]);
+export function getOutgoingRequestHistory(): Promise<
+  FriendlyRequestSummary[]
+> {
+  return loadOutgoing([
+    "accepted",
+    "declined",
+    "cancelled",
+    "expired",
+  ]);
 }
 
 /* ------------------------------------------------------------------ */
@@ -279,6 +338,12 @@ export async function getFriendlyRequestDetail(
     return null;
   }
 
+  const team = await getActiveTeam();
+
+  if (!team) {
+    return null;
+  }
+
   await expireOverdueRequests();
 
   const { data, error } = await supabase
@@ -287,21 +352,27 @@ export async function getFriendlyRequestDetail(
     .eq("id", requestId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     console.error("FRIENDLY REQUEST DETAIL ERROR:", error);
+
+    throw new Error(
+      error.message || "Couldn't load this request."
+    );
+  }
+
+  if (!data) {
     return null;
   }
 
   const row = data as unknown as RawRequest;
   const summary = normalise(row);
-  const friendly = first(row.friendlies);
 
-  if (!summary || !friendly) {
+  if (!summary) {
     return null;
   }
 
-  const isRequester = row.requested_by === user.id;
-  const isHost = friendly.created_by === user.id;
+  const isRequester = summary.requester.teamId === team.id;
+  const isHost = summary.host.teamId === team.id;
 
   if (!isRequester && !isHost) {
     return null;
@@ -311,17 +382,35 @@ export async function getFriendlyRequestDetail(
   let conversationId: string | null = null;
 
   if (summary.status === "accepted") {
-    const { data: match } = await supabase
+    const {
+      data: match,
+      error: matchError,
+    } = await supabase
       .from("matches")
       .select("id, match_conversations ( id )")
       .eq("friendly_request_id", requestId)
       .maybeSingle();
 
+    if (matchError) {
+      console.error(
+        "FRIENDLY REQUEST MATCH LOAD ERROR:",
+        matchError
+      );
+
+      throw new Error(
+        matchError.message ||
+          "Couldn't load the match linked to this request."
+      );
+    }
+
     if (match) {
       matchId = match.id;
 
       const conversation = first(
-        match.match_conversations as { id: string } | { id: string }[] | null
+        match.match_conversations as
+          | { id: string }
+          | { id: string }[]
+          | null
       );
 
       conversationId = conversation?.id ?? null;
@@ -341,35 +430,41 @@ export async function getFriendlyRequestDetail(
 /* Responding                                                          */
 /* ------------------------------------------------------------------ */
 
-export async function declineFriendlyRequest(requestId: string): Promise<void> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("You must be signed in.");
-  }
-
-  const { error } = await supabase
-    .from("friendly_requests")
-    .update({ status: "declined", responded_at: new Date().toISOString() })
-    .eq("id", requestId)
-    .eq("status", "pending");
+export async function declineFriendlyRequest(
+  requestId: string
+): Promise<void> {
+  const { error } = await supabase.rpc(
+    "decline_friendly_request",
+    {
+      p_request_id: requestId.trim(),
+    }
+  );
 
   if (error) {
     console.error("DECLINE FRIENDLY REQUEST ERROR:", error);
-    throw new Error("The request could not be declined.");
+
+    throw new Error(
+      error.message || "The request could not be declined."
+    );
   }
 }
 
-export async function withdrawFriendlyRequest(requestId: string): Promise<void> {
-  const { error } = await supabase.rpc("cancel_friendly_request", {
-    p_request_id: requestId.trim(),
-  });
+export async function withdrawFriendlyRequest(
+  requestId: string
+): Promise<void> {
+  const { error } = await supabase.rpc(
+    "cancel_friendly_request",
+    {
+      p_request_id: requestId.trim(),
+    }
+  );
 
   if (error) {
     console.error("WITHDRAW FRIENDLY REQUEST ERROR:", error);
-    throw new Error("We couldn't cancel this friendly request.");
+
+    throw new Error(
+      "We couldn't cancel this friendly request."
+    );
   }
 }
 
@@ -383,18 +478,16 @@ type RawFriendlyRow = {
 };
 
 /**
- * Accepts a request and confirms the fixture.
- *
- * The trusted `accept_friendly_request` RPC flips the accepted request, closes
- * the listing and declines competing requests. It does not create the `matches`
- * row, so we mirror the legacy flow: resolve-or-insert the fixture afterwards
- * (keyed on `friendly_id` so retries do not duplicate it), then best-effort
- * create its conversation.
+ * Accepts a request, resolves or creates its fixture, and creates
+ * a conversation for a newly created fixture.
  */
 export async function acceptFriendlyRequest(
   requestId: string
 ): Promise<{ matchId: string | null }> {
-  const { data: request, error: requestError } = await supabase
+  const {
+    data: request,
+    error: requestError,
+  } = await supabase
     .from("friendly_requests")
     .select(
       `
@@ -420,20 +513,33 @@ export async function acceptFriendlyRequest(
   }
 
   const friendly = first(
-    request.friendlies as RawFriendlyRow | RawFriendlyRow[] | null
+    request.friendlies as
+      | RawFriendlyRow
+      | RawFriendlyRow[]
+      | null
   );
 
   if (!friendly) {
     throw new Error("Friendly not found.");
   }
 
-  const { error: acceptError } = await supabase.rpc("accept_friendly_request", {
-    p_request_id: requestId,
-  });
+  const { error: acceptError } = await supabase.rpc(
+    "accept_friendly_request",
+    {
+      p_request_id: requestId,
+    }
+  );
 
   if (acceptError) {
-    console.error("ACCEPT FRIENDLY REQUEST ERROR:", acceptError);
-    throw new Error(acceptError.message || "The request could not be accepted.");
+    console.error(
+      "ACCEPT FRIENDLY REQUEST ERROR:",
+      acceptError
+    );
+
+    throw new Error(
+      acceptError.message ||
+        "The request could not be accepted."
+    );
   }
 
   const { data: existing } = await supabase
@@ -446,7 +552,10 @@ export async function acceptFriendlyRequest(
     return { matchId: existing.id };
   }
 
-  const { data: match, error: matchError } = await supabase
+  const {
+    data: match,
+    error: matchError,
+  } = await supabase
     .from("matches")
     .insert({
       friendly_id: friendly.id,
@@ -463,7 +572,11 @@ export async function acceptFriendlyRequest(
     .maybeSingle();
 
   if (matchError || !match) {
-    console.error("CREATE MATCH FROM REQUEST ERROR:", matchError);
+    console.error(
+      "CREATE MATCH FROM REQUEST ERROR:",
+      matchError
+    );
+
     return { matchId: null };
   }
 
@@ -472,7 +585,10 @@ export async function acceptFriendlyRequest(
     .insert({ match_id: match.id });
 
   if (conversationError) {
-    console.error("CREATE CONVERSATION ERROR:", conversationError);
+    console.error(
+      "CREATE CONVERSATION ERROR:",
+      conversationError
+    );
   }
 
   return { matchId: match.id };

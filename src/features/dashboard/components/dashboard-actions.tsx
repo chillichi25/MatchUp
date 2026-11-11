@@ -2,51 +2,45 @@ import { useRouter } from "expo-router";
 import {
   CalendarDays,
   ChevronRight,
-  Plus,
+  CirclePlus,
   Trophy,
 } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { cn } from "@/lib/utils";
-
-function ActionCard({
-  onPress,
-  className,
-  icon,
-  title,
-  description,
-  accessibilityLabel,
-}: {
+type ActionCardProps = {
   onPress: () => void;
-  className?: string;
   icon: ReactNode;
   title: string;
   description: string;
-  accessibilityLabel: string;
-}) {
+  backgroundColor: string;
+  borderColor: string;
+};
+
+function ActionCard({
+  onPress,
+  icon,
+  title,
+  description,
+  backgroundColor,
+  borderColor,
+}: ActionCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={title}
+      accessibilityHint={description}
       onPress={onPress}
-      className={cn(
-        "min-h-[140px] flex-1 rounded-2xl border p-4",
-        className
-      )}
+      className="active:opacity-75"
+      style={[styles.card, { backgroundColor, borderColor }]}
     >
-      <View className="flex-row items-start justify-between">
+      <View style={styles.iconRow}>
         {icon}
-        <ChevronRight size={17} color="#64748B" strokeWidth={2} />
+        <ChevronRight size={17} color="#7B8798" strokeWidth={1.8} />
       </View>
 
-      <Text className="mt-3 text-[13px] font-bold leading-[18px] text-slate-950">
-        {title}
-      </Text>
-
-      <Text className="mt-1 text-[11px] leading-[15px] text-slate-500">
-        {description}
-      </Text>
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardDescription}>{description}</Text>
     </Pressable>
   );
 }
@@ -55,62 +49,99 @@ export function DashboardActions() {
   const router = useRouter();
 
   return (
-    <View className="mt-6">
-      <Text className="text-[18px] font-bold tracking-tight text-slate-950">
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>
         What would you like to do?
       </Text>
 
-      <View className="mt-4 gap-3">
-        <View className="flex-row gap-3">
+      <View style={styles.grid}>
+        <View style={styles.row}>
           <ActionCard
-            accessibilityLabel="Find a Match"
             onPress={() => router.push("/matches")}
-            className="border-green-200 bg-green-50"
-            icon={
-              <CalendarDays size={31} strokeWidth={2.2} color="#00B83F" />
-            }
-            title="Find a Match"
-            description="Find local teams for friendlies"
+            backgroundColor="#EFF9F2"
+            borderColor="#C8E8D3"
+            icon={<CalendarDays size={26} color="#009E45" strokeWidth={1.9} />}
+            title="Find a match"
+            description="Find teams for friendlies"
           />
 
           <ActionCard
-            accessibilityLabel="Find a Tournament"
             onPress={() => router.push("/tournaments" as never)}
-            className="border-blue-200 bg-blue-50"
-            icon={<Trophy size={31} strokeWidth={2.2} color="#2563EB" />}
-            title="Find a Tournament"
-            description="Discover and enter tournaments"
+            backgroundColor="#F0F5FC"
+            borderColor="#D6E2F3"
+            icon={<Trophy size={26} color="#356AC3" strokeWidth={1.9} />}
+            title="Find a tournament"
+            description="Explore tournaments"
           />
         </View>
 
-        <View className="flex-row gap-3">
+        <View style={styles.row}>
           <ActionCard
-            accessibilityLabel="Create a Match"
             onPress={() => router.push("/create/friendly" as never)}
-            className="border-green-100 bg-green-50/50"
-            icon={
-              <View className="h-[29px] w-[29px] items-center justify-center rounded-full bg-green-500">
-                <Plus size={20} strokeWidth={2.3} color="#FFFFFF" />
-              </View>
-            }
-            title="Create a Match"
-            description="Post a friendly match"
+            backgroundColor="#FFFFFF"
+            borderColor="#CBD5E1"
+            icon={<CirclePlus size={26} color="#009E45" strokeWidth={1.9} />}
+            title="Create a match"
+            description="Post a friendly"
           />
 
           <ActionCard
-            accessibilityLabel="Create a Tournament"
             onPress={() => router.push("/create/tournament" as never)}
-            className="border-violet-100 bg-violet-50/50"
-            icon={
-              <View className="h-[29px] w-[29px] items-center justify-center rounded-full border-2 border-violet-400">
-                <Plus size={20} strokeWidth={2.5} color="#8B5CF6" />
-              </View>
-            }
-            title="Create a Tournament"
-            description="Organise your tournament"
+            backgroundColor="#FFFFFF"
+            borderColor="#CBD5E1"
+            icon={<CirclePlus size={26} color="#7560B5" strokeWidth={1.9} />}
+            title="Create a tournament"
+            description="Organise an event"
           />
         </View>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  section: {
+    marginTop: 24,
+  },
+  sectionTitle: {
+    color: "#07192D",
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+  },
+  grid: {
+    marginTop: 12,
+    gap: 12,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 12,
+  },
+  card: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 128,
+    padding: 14,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  iconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardTitle: {
+    marginTop: 12,
+    color: "#07192D",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  cardDescription: {
+    marginTop: 4,
+    color: "#596B80",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+});

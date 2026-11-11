@@ -4,13 +4,21 @@ import { Pressable, Text, View } from "react-native";
 import { Avatar } from "@/components/ui/avatar";
 
 import type { FriendlyListing } from "../types";
-import { formatDistance, formatKickOff, getDateParts } from "../utils/format";
+import {
+  formatDistance,
+  formatKickOff,
+  getDateParts,
+} from "../utils/format";
 
 type FriendlyCardProps = {
   listing: FriendlyListing;
   onPress: () => void;
   recommended?: boolean;
 };
+
+const GREEN = "#009E45";
+const NAVY = "#07192D";
+const MUTED = "#596B80";
 
 export function FriendlyCard({
   listing,
@@ -21,101 +29,169 @@ export function FriendlyCard({
   const kickOff = formatKickOff(listing.kickOff);
   const distance = formatDistance(listing.distanceMiles);
 
+  const teamName = listing.teamName?.trim();
+  const clubName = listing.clubName?.trim();
+  const ageGroup = listing.ageGroup?.trim();
+
+  const teamNameParts = teamName?.toLowerCase().split(/[\s-]+/);
+  const showAgeGroup =
+    ageGroup && !teamNameParts?.includes(ageGroup.toLowerCase());
+
   const tags = [
-    { key: "age", value: listing.ageGroup },
+    { key: "age", value: showAgeGroup ? ageGroup : null },
     { key: "level", value: listing.level },
     { key: "format", value: listing.matchFormat },
   ].filter((tag) => Boolean(tag.value));
 
+  const locationLabel = [
+    listing.location?.trim(),
+    distance,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${listing.clubName}, ${listing.teamName}`}
+      accessibilityLabel={[
+        teamName || clubName,
+        teamName && clubName ? clubName : null,
+        `${date.weekday} ${date.day} ${date.month}`,
+        kickOff,
+        locationLabel,
+        listing.isOwnPost ? "Your post" : null,
+      ]
+        .filter(Boolean)
+        .join(", ")}
       onPress={onPress}
-      className="flex-row overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      className="overflow-hidden rounded-2xl border border-[#CBD5E1] bg-white"
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.75 : 1,
+      })}
     >
-      <View className="w-[54px] items-center justify-center bg-green-50 py-3">
-        <Text className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
-          {date.weekday}
-        </Text>
-        <Text className="mt-1 text-[22px] font-bold leading-none text-brand">
-          {date.day}
-        </Text>
-        <Text className="mt-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">
-          {date.month}
-        </Text>
-      </View>
+      <View className="flex-row">
+        <View className="w-[62px] items-center justify-center border-r border-green-100 bg-green-50 px-2 py-5">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-[#596B80]">
+            {date.weekday}
+          </Text>
 
-      <View className="min-w-0 flex-1 px-3 py-3">
-        <View className="flex-row items-start gap-2.5">
-          <Avatar uri={listing.badgeUrl} name={listing.clubName} size={40} />
+          <Text
+            className="my-1 text-[28px] font-bold leading-9"
+            style={{ color: GREEN }}
+          >
+            {date.day}
+          </Text>
 
-          <View className="min-w-0 flex-1">
-            <View className="flex-row items-center gap-2">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-[#596B80]">
+            {date.month}
+          </Text>
+        </View>
+
+        <View className="min-w-0 flex-1 p-4">
+          <View className="flex-row items-center gap-3">
+            <Avatar
+              uri={listing.badgeUrl}
+              name={clubName || teamName || "Team"}
+              size={44}
+            />
+
+            <View className="min-w-0 flex-1">
               <Text
-                numberOfLines={1}
-                className="min-w-0 flex-1 text-[13px] font-bold leading-tight text-slate-950"
+                numberOfLines={2}
+                className="text-[16px] font-bold leading-[21px]"
+                style={{ color: NAVY }}
               >
-                {listing.clubName}
+                {teamName || clubName}
               </Text>
 
-              {listing.isOwnPost ? (
-                <View className="shrink-0 rounded-full bg-green-50 px-2 py-1">
-                  <Text className="text-[9px] font-bold leading-none text-[#00A638]">
-                    Your post
-                  </Text>
-                </View>
+              {teamName && clubName ? (
+                <Text
+                  numberOfLines={2}
+                  className="mt-1 text-[12px] leading-[17px]"
+                  style={{ color: MUTED }}
+                >
+                  {clubName}
+                </Text>
               ) : null}
             </View>
 
-            <Text numberOfLines={1} className="mt-0.5 text-[10px] text-slate-500">
-              {listing.teamName}
-            </Text>
+            <ChevronRight
+              size={18}
+              color={MUTED}
+              strokeWidth={1.8}
+            />
           </View>
 
-          <ChevronRight size={17} color="#94A3B8" />
-        </View>
-
-        {tags.length > 0 ? (
-          <View className="ml-[50px] mt-2 flex-row items-center gap-1.5">
-            {tags.map((tag) => (
-              <View
-                key={tag.key}
-                className={
-                  recommended
-                    ? "rounded-full bg-green-50 px-2 py-1"
-                    : "rounded-full bg-slate-100 px-2 py-1"
-                }
+          {listing.isOwnPost ? (
+            <View className="mt-3 self-start rounded-full bg-green-50 px-2.5 py-1">
+              <Text
+                className="text-[11px] font-semibold"
+                style={{ color: GREEN }}
               >
-                <Text
-                  className={
-                    recommended
-                      ? "text-[9px] font-semibold text-[#00A638]"
-                      : "text-[9px] font-medium text-slate-600"
-                  }
-                >
-                  {tag.value}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        <View className="ml-[50px] mt-2 flex-row items-center gap-3">
-          {kickOff ? (
-            <View className="flex-row items-center gap-1">
-              <Clock size={12} color="#64748B" />
-              <Text className="text-[10px] text-slate-500">{kickOff}</Text>
+                Your post
+              </Text>
             </View>
           ) : null}
 
-          {listing.location ? (
-            <View className="min-w-0 flex-1 flex-row items-center gap-1">
-              <MapPin size={12} color="#64748B" />
-              <Text numberOfLines={1} className="flex-1 text-[10px] text-slate-500">
-                {listing.location}
-                {distance ? ` · ${distance}` : ""}
-              </Text>
+          {tags.length > 0 ? (
+            <View className="mt-3 flex-row flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <View
+                  key={tag.key}
+                  className={`rounded-full px-2.5 py-1 ${
+                    recommended ? "bg-green-50" : "bg-slate-100"
+                  }`}
+                >
+                  <Text
+                    className="text-[11px] font-medium"
+                    style={{
+                      color: recommended ? GREEN : MUTED,
+                    }}
+                  >
+                    {tag.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {kickOff || locationLabel ? (
+            <View className="mt-3 gap-2 border-t border-slate-100 pt-3">
+              {kickOff ? (
+                <View className="flex-row items-center gap-2">
+                  <Clock
+                    size={15}
+                    color={GREEN}
+                    strokeWidth={1.8}
+                  />
+
+                  <Text
+                    className="text-[12px] font-semibold"
+                    style={{ color: NAVY }}
+                  >
+                    {kickOff}
+                  </Text>
+                </View>
+              ) : null}
+
+              {locationLabel ? (
+                <View className="flex-row items-start gap-2">
+                  <MapPin
+                    size={15}
+                    color={GREEN}
+                    strokeWidth={1.8}
+                    style={{ marginTop: 1 }}
+                  />
+
+                  <Text
+                    numberOfLines={2}
+                    className="min-w-0 flex-1 text-[12px] leading-[18px]"
+                    style={{ color: MUTED }}
+                  >
+                    {locationLabel}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
         </View>

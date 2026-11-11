@@ -11,32 +11,44 @@ export function MessageBubble({
   isMine: boolean;
 }) {
   return (
-    <View className={isMine ? "items-end" : "items-start"}>
-      <View className="max-w-[78%]">
-        <View
-          className={
-            isMine
-              ? "rounded-2xl rounded-br-md bg-brand px-4 py-2.5"
-              : "rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-2.5"
-          }
+    <View
+      style={{
+        alignItems: isMine ? "flex-end" : "flex-start",
+      }}
+    >
+      <View
+        style={{
+          maxWidth: "82%",
+          borderRadius: 16,
+          borderBottomRightRadius: isMine ? 6 : 16,
+          borderBottomLeftRadius: isMine ? 16 : 6,
+          borderWidth: 1,
+          borderColor: isMine ? "#CDEBD8" : "#E2E8F0",
+          backgroundColor: isMine ? "#E4F5EB" : "#FFFFFF",
+          paddingHorizontal: 14,
+          paddingTop: 10,
+          paddingBottom: 7,
+        }}
+      >
+        <Text
+          selectable
+          style={{
+            color: "#07192D",
+            fontSize: 15,
+            lineHeight: 22,
+          }}
         >
-          <Text
-            className={
-              isMine
-                ? "text-[14px] leading-5 text-white"
-                : "text-[14px] leading-5 text-slate-800"
-            }
-          >
-            {message.message}
-          </Text>
-        </View>
+          {message.message}
+        </Text>
 
         <Text
-          className={
-            isMine
-              ? "mt-1 text-right text-[11px] text-slate-400"
-              : "mt-1 text-left text-[11px] text-slate-400"
-          }
+          style={{
+            alignSelf: "flex-end",
+            marginTop: 4,
+            color: "#596B80",
+            fontSize: 11,
+            lineHeight: 15,
+          }}
         >
           {formatMessageTime(message.createdAt)}
         </Text>

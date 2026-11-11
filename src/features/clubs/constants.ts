@@ -1,4 +1,7 @@
 export const AGE_GROUP_OPTIONS = [
+  "U4",
+  "U5",
+  "U6",
   "U7",
   "U8",
   "U9",
@@ -15,6 +18,7 @@ export const AGE_GROUP_OPTIONS = [
 ] as const;
 
 export const MATCH_FORMAT_OPTIONS = [
+  "3v3",
   "5v5",
   "7v7",
   "9v9",

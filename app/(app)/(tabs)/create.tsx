@@ -1,72 +1,98 @@
 import { useRouter } from "expo-router";
-import { ChevronRight, Swords, Trophy } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { ChevronRight, CirclePlus, Trophy } from "lucide-react-native";
+import type { ReactNode } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { Screen } from "@/components/ui/screen";
+
+type CreateOptionProps = {
+  title: string;
+  description: string;
+  icon: ReactNode;
+  tint: string;
+  onPress: () => void;
+};
+
+function CreateOption({
+  title,
+  description,
+  icon,
+  tint,
+  onPress,
+}: CreateOptionProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={description}
+      onPress={onPress}
+      className="min-h-[104px] flex-row overflow-hidden rounded-2xl border border-slate-200 bg-white active:bg-slate-50"
+    >
+      <View
+        className="w-[64px] shrink-0 self-stretch items-center justify-center"
+        style={{ backgroundColor: tint }}
+      >
+        {icon}
+      </View>
+
+      <View className="min-w-0 flex-1 flex-row items-center gap-3 p-4">
+        <View className="min-w-0 flex-1">
+          <Text className="text-[16px] font-bold leading-5 text-[#07192D]">
+            {title}
+          </Text>
+          <Text className="mt-1 text-[13px] leading-[19px] text-[#596B80]">
+            {description}
+          </Text>
+        </View>
+
+        <ChevronRight size={18} color="#64748B" strokeWidth={1.8} />
+      </View>
+    </Pressable>
+  );
+}
 
 export default function CreateScreen() {
   const router = useRouter();
 
   return (
     <Screen edges={["top"]}>
-      <View className="flex-1 px-4 pb-28 pt-6">
-        <Text className="text-[28px] font-bold tracking-tight text-slate-950">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 24,
+          paddingBottom: 112,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text
+          accessibilityRole="header"
+          className="text-[28px] font-bold tracking-tight text-[#07192D]"
+        >
           Create
         </Text>
-        <Text className="mt-0.5 text-[13px] text-slate-500">
+        <Text className="mt-1 text-[13px] leading-5 text-[#596B80]">
           What would you like to organise?
         </Text>
 
-        <View className="mt-6 gap-3.5">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Create a match"
+        <View className="mt-6 gap-3">
+          <CreateOption
+            title="Create a friendly"
+            description="List a match and receive requests from other teams."
+            tint="#EFF9F2"
+            icon={<CirclePlus size={26} color="#009E45" strokeWidth={1.9} />}
             onPress={() => router.push("/create/friendly" as never)}
-            className="min-h-[104px] flex-row overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm"
-          >
-            <View className="w-[68px] items-center justify-center bg-green-50">
-              <Swords size={27} color="#00B83F" strokeWidth={2} />
-            </View>
+          />
 
-            <View className="min-w-0 flex-1 flex-row items-center gap-3 px-4 py-4">
-              <View className="min-w-0 flex-1">
-                <Text className="text-[16px] font-bold leading-tight text-slate-950">
-                  Create a Match
-                </Text>
-                <Text className="mt-1.5 text-[13px] leading-[18px] text-slate-500">
-                  Find another team and organise a friendly match.
-                </Text>
-              </View>
-
-              <ChevronRight size={20} color="#94A3B8" />
-            </View>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Create a tournament"
+          <CreateOption
+            title="Create a tournament"
+            description="Set up a tournament and invite teams to enter."
+            tint="#F5F0FC"
+            icon={<Trophy size={26} color="#7C3AED" strokeWidth={1.9} />}
             onPress={() => router.push("/create/tournament" as never)}
-            className="min-h-[104px] flex-row overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm"
-          >
-            <View className="w-[68px] items-center justify-center bg-violet-50">
-              <Trophy size={27} color="#7C3AED" strokeWidth={2} />
-            </View>
-
-            <View className="min-w-0 flex-1 flex-row items-center gap-3 px-4 py-4">
-              <View className="min-w-0 flex-1">
-                <Text className="text-[16px] font-bold leading-tight text-slate-950">
-                  Create a Tournament
-                </Text>
-                <Text className="mt-1.5 text-[13px] leading-[18px] text-slate-500">
-                  Organise a tournament and invite teams.
-                </Text>
-              </View>
-
-              <ChevronRight size={20} color="#94A3B8" />
-            </View>
-          </Pressable>
+          />
         </View>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }

@@ -7,6 +7,10 @@ import {
   getMatchDetail,
   getMatchHistory,
   getUpcomingMatches,
+  getPendingMatchResult,
+  getMatchesToConfirm,
+respondToMatchResult,
+submitMatchResult,
 } from "../services/matches.service";
 
 export const MATCH_QUERY_KEYS = {
@@ -57,5 +61,54 @@ export function useCancelMatch() {
         queryKey: MATCH_QUERY_KEYS.detail(matchId),
       });
     },
+  });
+}
+
+export function usePendingMatchResult(
+  matchId: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ["matches", "pending-result", matchId],
+    queryFn: () => getPendingMatchResult(matchId),
+    enabled: Boolean(matchId) && enabled,
+  });
+}
+
+export function useSubmitMatchResult() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: submitMatchResult,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: MATCH_QUERY_KEYS.all,
+      });
+    },
+  });
+}
+
+export function useRespondToMatchResult() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: respondToMatchResult,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: MATCH_QUERY_KEYS.all,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["chat"],
+        }),
+      ]);
+    },
+  });
+}
+
+export function useMatchesToConfirm() {
+  return useQuery({
+    queryKey: ["matches", "results-to-confirm"],
+    queryFn: getMatchesToConfirm,
   });
 }

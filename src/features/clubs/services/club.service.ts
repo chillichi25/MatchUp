@@ -170,6 +170,8 @@ export async function getPendingClubRequest(): Promise<PendingClubRequest | null
     )
     .eq("coach_id", user.id)
     .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
@@ -272,13 +274,35 @@ export async function completeClubSetup(input: {
     );
   }
 
-  const result = first(data as Record<string, string>[] | Record<string, string>);
+  const result = first(
+    data as Record<string, string>[] | Record<string, string>
+  );
 
   if (!result?.club_id || !result?.team_id) {
     throw new Error("Your club and team could not be created.");
   }
 
-  return { clubId: result.club_id, teamId: result.team_id };
+  return {
+    clubId: result.club_id,
+    teamId: result.team_id,
+  };
+}
+
+export async function getMyPendingTeams(
+  clubId: string
+): Promise<ClubTeam[]> {
+  await requireUser();
+
+  const { data, error } = await supabase.rpc("get_my_pending_teams", {
+    p_club_id: clubId,
+  });
+
+  if (error) {
+    console.error("GET MY PENDING TEAMS ERROR:", error);
+    throw new Error("We couldn't load your requested team.");
+  }
+
+  return (data ?? []) as unknown as ClubTeam[];
 }
 
 export async function createClub(input: {
@@ -341,75 +365,37 @@ export async function createClub(input: {
   return club;
 }
 
-export async function requestToJoinClub(clubId: string) {
-  const user = await requireUser();
-
-  if (!clubId.trim()) throw new Error("A club is required.");
-
-  const { data: existingMembership, error: membershipError } = await supabase
-    .from("coach_clubs")
-    .select("id, status, role")
-    .eq("coach_id", user.id)
-    .eq("club_id", clubId)
-    .maybeSingle();
-
-  if (membershipError) {
-    console.error("CHECK CLUB MEMBERSHIP ERROR:", membershipError);
-    throw new Error("We couldn't check your club request. Please try again.");
-  }
-
-  if (existingMembership?.status === "pending") {
-    return {
-      membershipId: existingMembership.id,
-      status: "pending" as const,
-      alreadyExists: true,
-    };
-  }
-
-  if (existingMembership?.status === "approved") {
-    return {
-      membershipId: existingMembership.id,
-      status: "approved" as const,
-      alreadyExists: true,
-    };
-  }
-
-  const { data, error } = await supabase.rpc("request_to_join_club", {
-    p_club_id: clubId,
-  });
-
-  if (error) {
-    console.error("REQUEST TO JOIN CLUB RPC ERROR:", error);
-    throw new Error(
-      error.message || "We couldn't send your request. Please try again."
-    );
-  }
-
-  if (!data) throw new Error("Your request could not be created.");
-
-  return {
-    membershipId: data as string,
-    status: "pending" as const,
-    alreadyExists: false,
-  };
-}
-
 export async function requestToJoinTeam(teamId: string) {
   await requireUser();
 
-  if (!teamId?.trim()) throw new Error("Please select a team.");
+  if (!teamId?.trim()) {
+    throw new Error("Please select a team.");
+  }
 
   const { data: membershipId, error } = await supabase.rpc(
     "request_to_join_team",
-    { p_team_id: teamId }
+    { p_team_id: teamId.trim() }
   );
 
   if (error) {
-    console.error("REQUEST TO JOIN TEAM ERROR:", error);
-    throw new Error("We couldn't send your team request.");
+    console.error("REQUEST TO JOIN TEAM ERROR:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    throw new Error(
+      __DEV__
+        ? `${error.message}${error.code ? ` (${error.code})` : ""}`
+        : "We couldn't send your team request. Please try again."
+    );
   }
 
-  return { membershipId: membershipId as string, status: "pending" as const };
+  return {
+    membershipId: membershipId as string,
+    status: "pending" as const,
+  };
 }
 
 // --------------------------------------------------
@@ -481,7 +467,9 @@ export async function getPendingClubJoinRequests(
 export async function approveClubJoinRequest(membershipId: string) {
   await requireUser();
 
-  if (!membershipId?.trim()) throw new Error("A membership request is required.");
+  if (!membershipId?.trim()) {
+    throw new Error("A membership request is required.");
+  }
 
   const { error } = await supabase.rpc("approve_club_join_request", {
     p_membership_id: membershipId,
@@ -517,7 +505,9 @@ export async function getPendingTeamJoinRequests(
 export async function approveTeamJoinRequest(membershipId: string) {
   await requireUser();
 
-  if (!membershipId?.trim()) throw new Error("A team membership request is required.");
+  if (!membershipId?.trim()) {
+    throw new Error("A team membership request is required.");
+  }
 
   const { error } = await supabase.rpc("approve_team_join_request", {
     p_membership_id: membershipId,
@@ -606,7 +596,10 @@ export async function createTeamForClub(input: {
 
   if (!teamId) throw new Error("The team could not be created.");
 
-  return { success: true, teamId: teamId as string };
+  return {
+    success: true,
+    teamId: teamId as string,
+  };
 }
 
 export async function updateTeamForClub(input: {
@@ -792,4 +785,60 @@ export async function updateClub(input: {
   }
 
   return club;
+}
+
+export async function declineTeamJoinRequest(
+  membershipId: string
+) {
+  await requireUser();
+
+  if (!membershipId?.trim()) {
+    throw new Error("A team membership request is required.");
+  }
+
+  const { error } = await supabase.rpc(
+    "decline_team_join_request",
+    {
+      p_membership_id: membershipId.trim(),
+    }
+  );
+
+  if (error) {
+    console.error("DECLINE TEAM JOIN REQUEST ERROR:", error);
+
+    throw new Error(
+      "We couldn't decline this request. Please refresh and try again."
+    );
+  }
+
+  return { success: true };
+}
+
+export async function cancelMyJoinRequest(input: {
+  clubId: string;
+  membershipId?: string;
+}) {
+  await requireUser();
+
+  if (!input.clubId.trim()) {
+    throw new Error("A club is required.");
+  }
+
+  const { error } = await supabase.rpc(
+    "cancel_my_join_request",
+    {
+      p_club_id: input.clubId.trim(),
+      p_membership_id: input.membershipId ?? null,
+    }
+  );
+
+  if (error) {
+    console.error("CANCEL JOIN REQUEST ERROR:", error);
+
+    throw new Error(
+      "We couldn't cancel this request. Refresh its status and try again."
+    );
+  }
+
+  return { success: true };
 }

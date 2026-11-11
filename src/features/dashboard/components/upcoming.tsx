@@ -1,144 +1,115 @@
 import { useRouter } from "expo-router";
-import { ChevronRight, Clock3, MapPin, Shield, Trophy } from "lucide-react-native";
-import { useState } from "react";
+import {
+  CalendarDays,
+  ChevronRight,
+  Clock3,
+  MapPin,
+  Trophy,
+} from "lucide-react-native";
+import { useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Avatar } from "@/components/ui/avatar";
+
 import type { DashboardMatch, DashboardTournament } from "../types";
 import { getDateParts } from "../utils/format-date";
 
-function UpcomingMatchRow({ match }: { match: DashboardMatch }) {
-  const router = useRouter();
-  const { weekday, day, month } = getDateParts(match.matchDate);
-  const kickOff = match.kickOff?.slice(0, 5) ?? "TBC";
+const GREEN = "#009E45";
+const VIOLET = "#7C3AED";
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${match.opponent.clubName} match`}
-      onPress={() => router.push("/matches")}
-      className="flex-row items-center rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
-    >
-      <View className="w-[46px] shrink-0 items-center border-r border-slate-100 pr-3">
-        <Text className="text-[9px] font-bold tracking-wide text-slate-400">
-          {weekday}
-        </Text>
+const TABS = [
+  { value: "matches", label: "Matches" },
+  { value: "tournaments", label: "Tournaments" },
+] as const;
 
-        <Text className="mt-0.5 text-[19px] font-bold leading-none text-[#00A638]">
-          {day}
-        </Text>
+type UpcomingTab = (typeof TABS)[number]["value"];
 
-        <Text className="mt-1 text-[9px] font-bold tracking-wide text-slate-400">
-          {month}
-        </Text>
-      </View>
-
-      <View className="ml-3 shrink-0">
-        <Avatar
-          uri={match.opponent.badgeUrl}
-          name={match.opponent.clubName}
-          size={44}
-        />
-      </View>
-
-      <View className="ml-3 min-w-0 flex-1">
-        <Text className="text-[13px] font-bold text-slate-950" numberOfLines={1}>
-          {match.opponent.clubName}
-        </Text>
-
-        <Text className="mt-0.5 text-[11px] font-medium text-slate-500" numberOfLines={1}>
-          {match.opponent.teamName}
-        </Text>
-
-        <View className="mt-1.5 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-          <View className="flex-row items-center gap-1">
-            <MapPin size={11} color="#64748B" strokeWidth={2} />
-            <Text className="text-[10px] font-medium text-slate-500" numberOfLines={1}>
-              {match.isHome ? "Home" : "Away"}
-              {match.location ? ` · ${match.location}` : ""}
-            </Text>
-          </View>
-
-          <View className="flex-row items-center gap-1">
-            <Clock3 size={11} color="#64748B" strokeWidth={2} />
-            <Text className="text-[10px] font-medium text-slate-500">
-              {kickOff}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <ChevronRight size={18} color="#CBD5E1" strokeWidth={2} />
-    </Pressable>
-  );
-}
-
-function UpcomingTournamentRow({
-  tournament,
+function UpcomingCard({
+  date,
+  title,
+  subtitle,
+  time,
+  location,
+  accent,
+  badge,
+  onPress,
 }: {
-  tournament: DashboardTournament;
+  date: string;
+  title: string;
+  subtitle?: string | null;
+  time?: string | null;
+  location?: string | null;
+  accent: string;
+  badge: ReactNode;
+  onPress: () => void;
 }) {
-  const router = useRouter();
-  const { weekday, day, month } = getDateParts(tournament.startDate);
-  const startTime = tournament.startTime?.slice(0, 5) ?? "TBC";
+  const { weekday, day, month } = getDateParts(date);
+  const timeLabel = time?.slice(0, 5) || "Time to be confirmed";
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${tournament.name} tournament`}
-      onPress={() => router.push("/matches")}
-      className="flex-row items-center rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
+      accessibilityLabel={[
+        title,
+        subtitle,
+        `${weekday} ${day} ${month}`,
+        timeLabel,
+        location,
+      ].filter(Boolean).join(", ")}
+      accessibilityHint="Opens fixture details"
+      onPress={onPress}
+      className="flex-row overflow-hidden rounded-2xl border border-slate-200 bg-white active:bg-slate-50"
     >
-      <View className="w-[46px] shrink-0 items-center border-r border-slate-100 pr-3">
-        <Text className="text-[9px] font-bold tracking-wide text-slate-400">
+      <View className="w-[54px] shrink-0 self-stretch items-center justify-center border-r border-slate-200 bg-slate-100 py-2">
+        <Text className="text-[9px] font-semibold text-slate-500">
           {weekday}
         </Text>
-
-        <Text className="mt-0.5 text-[19px] font-bold leading-none text-violet-600">
+        <Text
+          className="text-[24px] font-bold leading-none"
+          style={{ color: accent }}
+        >
           {day}
         </Text>
-
-        <Text className="mt-1 text-[9px] font-bold tracking-wide text-slate-400">
+        <Text className="mt-1 text-[9px] font-semibold text-slate-500">
           {month}
         </Text>
       </View>
 
-      <View className="ml-3 h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-50">
-        <Trophy size={21} color="#7C3AED" strokeWidth={2} />
-      </View>
+      <View className="min-w-0 flex-1 flex-row items-center gap-3 p-3">
+        {badge}
 
-      <View className="ml-3 min-w-0 flex-1">
-        <Text className="text-[13px] font-bold text-slate-950" numberOfLines={1}>
-          {tournament.name}
-        </Text>
+        <View className="min-w-0 flex-1">
+          <Text numberOfLines={1} className="text-[14px] font-bold text-[#07192D]">
+            {title}
+          </Text>
 
-        <Text className="mt-0.5 text-[11px] font-medium text-slate-500" numberOfLines={1}>
-          {tournament.ageGroup ? `${tournament.ageGroup} Tournament` : "Tournament"}
-        </Text>
+          {subtitle ? (
+            <Text numberOfLines={1} className="mt-0.5 text-[12px] text-[#596B80]">
+              {subtitle}
+            </Text>
+          ) : null}
 
-        <View className="mt-1.5 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-          {tournament.location ? (
-            <View className="flex-row items-center gap-1">
-              <MapPin size={11} color="#64748B" strokeWidth={2} />
-              <Text
-                className="max-w-[105px] text-[10px] font-medium text-slate-500"
-                numberOfLines={1}
-              >
-                {tournament.location}
+          <View className="mt-2 flex-row items-center gap-1.5">
+            <Clock3 size={13} color={accent} strokeWidth={1.8} />
+            <Text className="min-w-0 flex-1 text-[12px] font-medium text-[#07192D]">
+              {timeLabel}
+            </Text>
+          </View>
+
+          {location ? (
+            <View className="mt-1 flex-row items-start gap-1.5">
+              <View className="mt-0.5">
+                <MapPin size={13} color={accent} strokeWidth={1.8} />
+              </View>
+              <Text numberOfLines={2} className="min-w-0 flex-1 text-[12px] text-[#596B80]">
+                {location}
               </Text>
             </View>
           ) : null}
-
-          <View className="flex-row items-center gap-1">
-            <Clock3 size={11} color="#64748B" strokeWidth={2} />
-            <Text className="text-[10px] font-medium text-slate-500">
-              {startTime}
-            </Text>
-          </View>
         </View>
-      </View>
 
-      <ChevronRight size={18} color="#CBD5E1" strokeWidth={2} />
+        <ChevronRight size={17} color="#64748B" strokeWidth={1.8} />
+      </View>
     </Pressable>
   );
 }
@@ -147,48 +118,36 @@ function UpcomingEmptyState({
   type,
   hasUpNext,
 }: {
-  type: "matches" | "tournaments";
+  type: UpcomingTab;
   hasUpNext: boolean;
 }) {
   const isMatches = type === "matches";
-
-  const title = isMatches
-    ? hasUpNext
-      ? "No more upcoming matches"
-      : "No upcoming matches"
-    : hasUpNext
-      ? "No more upcoming tournaments"
-      : "No upcoming tournaments";
-
-  const description = isMatches
-    ? hasUpNext
-      ? "Your next match is already shown in Up Next."
-      : "Matches you arrange will appear here."
-    : hasUpNext
-      ? "Your next tournament is already shown in Up Next."
-      : "Tournaments you join will appear here.";
+  const eventName = isMatches ? "match" : "tournament";
 
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
+    <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
       <View
         className={`h-10 w-10 shrink-0 items-center justify-center rounded-full ${
           isMatches ? "bg-green-50" : "bg-violet-50"
         }`}
       >
         {isMatches ? (
-          <Shield size={19} color="#00B83F" strokeWidth={2} />
+          <CalendarDays size={19} color={GREEN} strokeWidth={1.8} />
         ) : (
-          <Trophy size={19} color="#7C3AED" strokeWidth={2} />
+          <Trophy size={19} color={VIOLET} strokeWidth={1.8} />
         )}
       </View>
 
       <View className="min-w-0 flex-1">
-        <Text className="text-[13px] font-bold leading-tight text-slate-950">
-          {title}
+        <Text className="text-[14px] font-bold text-[#07192D]">
+          {hasUpNext ? `No more upcoming ${type}` : `No upcoming ${type}`}
         </Text>
-
-        <Text className="mt-1 text-[11px] leading-[15px] text-slate-500">
-          {description}
+        <Text className="mt-1 text-[12px] leading-[18px] text-[#596B80]">
+          {hasUpNext
+            ? `Your next ${eventName} is shown in Up Next.`
+            : isMatches
+              ? "Confirmed matches will appear here."
+              : "Your team's confirmed tournaments will appear here."}
         </Text>
       </View>
     </View>
@@ -207,106 +166,129 @@ export function Upcoming({
   nextEventId: string | null;
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"matches" | "tournaments">(
-    "matches"
-  );
+  const [selectedTab, setSelectedTab] = useState<UpcomingTab | null>(null);
 
+  if (matches.length === 0 && tournaments.length === 0) return null;
+
+  const activeTab =
+    selectedTab ?? (matches.length > 0 ? "matches" : "tournaments");
   const isMatches = activeTab === "matches";
-  const hasUpcomingActivity = matches.length > 0 || tournaments.length > 0;
 
-  if (!hasUpcomingActivity) {
-    return null;
-  }
+  const visibleMatches = matches
+    .filter((match) => nextEventType !== "match" || match.id !== nextEventId)
+    .slice(0, 2);
 
-  const visibleMatches = matches.filter(
-    (match) => !(nextEventType === "match" && match.id === nextEventId)
-  );
+  const visibleTournaments = tournaments
+    .filter(
+      (tournament) =>
+        nextEventType !== "tournament" || tournament.id !== nextEventId
+    )
+    .slice(0, 2);
 
-  const visibleTournaments = tournaments.filter(
-    (tournament) =>
-      !(nextEventType === "tournament" && tournament.id === nextEventId)
-  );
+  const hasVisibleEvents = isMatches
+    ? visibleMatches.length > 0
+    : visibleTournaments.length > 0;
 
   return (
     <View className="mt-8">
-      <Text className="text-[18px] font-bold tracking-tight text-slate-950">
+      <Text className="text-[18px] font-bold tracking-tight text-[#07192D]">
         Upcoming
       </Text>
 
       <View className="mt-3 flex-row rounded-xl bg-slate-200/70 p-1">
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: isMatches }}
-          onPress={() => setActiveTab("matches")}
-          className={`flex-1 items-center rounded-lg px-3 py-2 ${
-            isMatches ? "bg-white" : ""
-          }`}
-        >
-          <Text
-            className={`text-[13px] font-bold ${
-              isMatches ? "text-[#00A638]" : "text-slate-500"
-            }`}
-          >
-            Matches
-          </Text>
-        </Pressable>
+        {TABS.map(({ value, label }) => {
+          const selected = activeTab === value;
 
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: !isMatches }}
-          onPress={() => setActiveTab("tournaments")}
-          className={`flex-1 items-center rounded-lg px-3 py-2 ${
-            !isMatches ? "bg-white" : ""
-          }`}
-        >
-          <Text
-            className={`text-[13px] font-bold ${
-              !isMatches ? "text-[#00A638]" : "text-slate-500"
-            }`}
-          >
-            Tournaments
-          </Text>
-        </Pressable>
+          return (
+            <Pressable
+              key={value}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setSelectedTab(value)}
+              className={`min-h-[44px] flex-1 items-center justify-center rounded-lg px-2 ${
+                selected ? "bg-white" : ""
+              }`}
+            >
+              <Text
+                className={`text-[13px] font-semibold ${
+                  selected ? "text-[#009E45]" : "text-[#596B80]"
+                }`}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      <View className="mt-3 gap-2">
-        {isMatches ? (
-          visibleMatches.length === 0 ? (
-            <UpcomingEmptyState
-              type="matches"
-              hasUpNext={nextEventType === "match"}
-            />
-          ) : (
-            visibleMatches
-              .slice(0, 2)
-              .map((match) => <UpcomingMatchRow key={match.id} match={match} />)
-          )
-        ) : visibleTournaments.length === 0 ? (
+      <View className="mt-3 gap-2.5">
+        {!hasVisibleEvents ? (
           <UpcomingEmptyState
-            type="tournaments"
-            hasUpNext={nextEventType === "tournament"}
+            type={activeTab}
+            hasUpNext={nextEventType === (isMatches ? "match" : "tournament")}
           />
-        ) : (
-          visibleTournaments
-            .slice(0, 2)
-            .map((tournament) => (
-              <UpcomingTournamentRow
-                key={tournament.id}
-                tournament={tournament}
+        ) : isMatches ? (
+          visibleMatches.map((match) => {
+            const teamName = match.opponent.teamName.trim();
+            const clubName = match.opponent.clubName.trim();
+            const title = teamName || clubName || "Opponent";
+            const location = [
+              match.isHome ? "Home" : "Away",
+              match.location?.trim(),
+            ].filter(Boolean).join(" · ");
+
+            return (
+              <UpcomingCard
+                key={match.id}
+                date={match.matchDate}
+                title={title}
+                subtitle={clubName && clubName !== title ? clubName : null}
+                time={match.kickOff}
+                location={location}
+                accent={GREEN}
+                badge={
+                  <Avatar
+                    uri={match.opponent.badgeUrl}
+                    name={clubName || title}
+                    size={40}
+                  />
+                }
+                onPress={() => router.push(`/matches/${match.id}` as never)}
               />
-            ))
+            );
+          })
+        ) : (
+          visibleTournaments.map((tournament) => (
+            <UpcomingCard
+              key={tournament.id}
+              date={tournament.startDate}
+              title={tournament.name}
+              subtitle={tournament.ageGroup}
+              time={tournament.startTime}
+              location={tournament.location}
+              accent={VIOLET}
+              badge={
+                <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-50">
+                  <Trophy size={21} color={VIOLET} strokeWidth={1.8} />
+                </View>
+              }
+              onPress={() => router.push(`/tournaments/${tournament.id}` as never)}
+            />
+          ))
         )}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push("/matches")}
-        className="mt-3 h-10 w-full items-center justify-center rounded-full border border-[#00B83F] bg-white"
-      >
-        <Text className="text-[13px] font-bold text-[#00A638]">
-          {isMatches ? "View All Matches" : "View All Tournaments"}
-        </Text>
-      </Pressable>
+      {isMatches && matches.length > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/matches/upcoming")}
+          className="mt-3 min-h-[44px] items-center justify-center rounded-full border border-[#009E45] bg-white px-4 active:bg-green-50"
+        >
+          <Text className="text-[13px] font-semibold text-[#009E45]">
+            View all matches
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

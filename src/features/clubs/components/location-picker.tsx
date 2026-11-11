@@ -10,12 +10,15 @@ import {
 
 import { cn } from "@/lib/utils";
 
-import { searchLocations, toLocationValue } from "../services/location.service";
-import type { LocationResult } from "../services/location.service";
+import {
+  searchLocations,
+  toLocationValue,
+  type LocationResult,
+} from "../services/location.service";
 import type { LocationValue } from "../types";
 
 type LocationPickerProps = {
-  value: LocationValue | null;
+  value: LocationValue | string | null;
   onChange: (location: LocationValue | null) => void;
   placeholder?: string;
   error?: boolean;
@@ -26,16 +29,18 @@ type LocationPickerProps = {
 export function LocationPicker({
   value,
   onChange,
-  placeholder = "Start typing a town or city",
+  placeholder = "Search town or city",
   error = false,
   onInputChange,
   disabled = false,
 }: LocationPickerProps) {
-  const [query, setQuery] = useState(value?.formatted ?? "");
+  const selectedLabel = typeof value === "string" ? value : value?.formatted;
+  const [query, setQuery] = useState(selectedLabel ?? "");
   const [results, setResults] = useState<LocationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+
   const requestId = useRef(0);
 
   useEffect(() => {
@@ -43,11 +48,7 @@ export function LocationPicker({
     const currentRequest = ++requestId.current;
 
     const timer = setTimeout(async () => {
-      if (
-        disabled ||
-        trimmed.length < 2 ||
-        trimmed === value?.formatted
-      ) {
+      if (disabled || trimmed.length < 2 || trimmed === selectedLabel) {
         setResults([]);
         setIsOpen(false);
         setIsLoading(false);
@@ -77,19 +78,36 @@ export function LocationPicker({
       }
     }, 350);
 
-    return () => clearTimeout(timer);
-  }, [query, value?.formatted, disabled]);
+    return () => {
+      clearTimeout(timer);
+
+      if (requestId.current === currentRequest) {
+        requestId.current += 1;
+      }
+    };
+  }, [query, selectedLabel, disabled]);
 
   function handleSelect(result: LocationResult) {
+    requestId.current += 1;
+
     const location = toLocationValue(result);
+
     setQuery(location.formatted);
     setResults([]);
+    setSearchError("");
+    setIsLoading(false);
     setIsOpen(false);
     onChange(location);
   }
 
   function handleChangeText(text: string) {
+    requestId.current += 1;
+
     setQuery(text);
+    setResults([]);
+    setSearchError("");
+    setIsLoading(false);
+    setIsOpen(false);
     onInputChange?.();
 
     if (value) {
@@ -99,8 +117,11 @@ export function LocationPicker({
 
   function handleClear() {
     requestId.current += 1;
+
     setQuery("");
     setResults([]);
+    setSearchError("");
+    setIsLoading(false);
     setIsOpen(false);
     onInputChange?.();
     onChange(null);
@@ -110,66 +131,103 @@ export function LocationPicker({
     <View className="w-full">
       <View
         className={cn(
-          "h-12 w-full flex-row items-center rounded-2xl border bg-white px-4",
-          error ? "border-red-400" : "border-slate-200",
+          "w-full flex-row items-center bg-white",
           disabled && "opacity-50"
         )}
+        style={{
+          height: 56,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: error ? "#F87171" : "#CBD5E1",
+          paddingLeft: 16,
+          paddingRight: 8,
+        }}
       >
-        <MapPin size={18} color="#94A3B8" strokeWidth={1.8} />
+        <MapPin size={18} color="#7B8798" strokeWidth={1.8} />
 
         <TextInput
+          accessibilityLabel="Town or city"
           value={query}
           onChangeText={handleChangeText}
           editable={!disabled}
           placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#7B8798"
           autoCapitalize="words"
-          className="ml-3 h-full flex-1 text-[15px] text-slate-900"
+          autoCorrect={false}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            height: "100%",
+            marginLeft: 12,
+            paddingVertical: 0,
+            color: "#07192D",
+            fontSize: 16,
+          }}
         />
 
         {isLoading ? (
-          <ActivityIndicator color="#00B83F" size="small" />
+          <View className="h-11 w-11 items-center justify-center">
+            <ActivityIndicator color="#009E45" size="small" />
+          </View>
         ) : query.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Clear location"
-            hitSlop={8}
+            accessibilityState={{ disabled }}
+            disabled={disabled}
             onPress={handleClear}
-            className="h-8 w-8 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
-            <X size={18} color="#94A3B8" strokeWidth={2} />
+            <X size={18} color="#7B8798" strokeWidth={2} />
           </Pressable>
         ) : null}
       </View>
 
-      {isOpen ? (
-        <View className="mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      {isOpen && !disabled ? (
+        <View
+          style={{
+            marginTop: 8,
+            overflow: "hidden",
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: "#CBD5E1",
+            backgroundColor: "#FFFFFF",
+          }}
+        >
           {searchError ? (
-            <Text className="px-4 py-3 text-[13px] text-red-600">
+            <Text
+              accessibilityRole="alert"
+              className="px-4 py-3 text-[13px] text-red-600"
+            >
               {searchError}
             </Text>
           ) : results.length === 0 ? (
-            <Text className="px-4 py-3 text-[13px] text-slate-500">
-              No locations found.
+            <Text className="px-4 py-3 text-[13px] text-[#596B80]">
+              {query.trim().length < 3
+                ? "Keep typing to find your town or city."
+                : "No locations found. Try another town or city."}
             </Text>
           ) : (
-            results.map((result) => (
+            results.map((result, index) => (
               <Pressable
                 key={result.id}
                 accessibilityRole="button"
                 onPress={() => handleSelect(result)}
-                className="flex-row items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0"
+                className="flex-row items-center gap-3 px-4 py-3 active:bg-slate-50"
+                style={{
+                  borderBottomWidth: index < results.length - 1 ? 1 : 0,
+                  borderBottomColor: "#F1F5F9",
+                }}
               >
-                <MapPin size={17} color="#00B83F" strokeWidth={2} />
+                <MapPin size={18} color="#009E45" strokeWidth={1.8} />
 
                 <View className="min-w-0 flex-1">
-                  <Text className="text-[14px] font-semibold text-slate-900">
+                  <Text className="text-[15px] font-semibold text-[#07192D]">
                     {result.city}
                   </Text>
-                  <Text className="text-[12px] text-slate-500">
-                    {[result.county, result.country]
-                      .filter(Boolean)
-                      .join(", ")}
+
+                  <Text className="mt-0.5 text-[13px] leading-[18px] text-[#596B80]">
+                    {[result.county, result.country].filter(Boolean).join(", ")}
                   </Text>
                 </View>
               </Pressable>

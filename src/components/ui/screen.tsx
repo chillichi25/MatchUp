@@ -9,16 +9,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { cn } from "@/lib/utils";
 
+type ScreenEdge = "top" | "right" | "bottom" | "left";
+
 type ScreenProps = ViewProps & {
   children: ReactNode;
   className?: string;
-  edges?: ("top" | "right" | "bottom" | "left")[];
+  edges?: ScreenEdge[];
 };
 
-/**
- * Standard screen shell: page background, safe-area insets and the max-width
- * "phone column" used across the MatchUp layouts.
- */
 export function Screen({
   children,
   className,
@@ -26,8 +24,14 @@ export function Screen({
   ...props
 }: ScreenProps) {
   return (
-    <SafeAreaView edges={edges} className="flex-1 bg-[#F8FAFC]">
-      <View className={cn("flex-1", className)} {...props}>
+    <SafeAreaView
+      edges={edges}
+      style={{ flex: 1, backgroundColor: "#F8FAFC" }}
+    >
+      <View
+        className={cn("flex-1", className)}
+        {...props}
+      >
         {children}
       </View>
     </SafeAreaView>
@@ -38,23 +42,36 @@ type ScreenScrollProps = ScrollViewProps & {
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  edges?: ScreenEdge[];
 };
 
 export function ScreenScroll({
   children,
   className,
   contentClassName,
+  edges = [],
   ...props
 }: ScreenScrollProps) {
   return (
-    <ScrollView
-      className={cn("flex-1 bg-[#F8FAFC]", className)}
-      contentContainerClassName={cn("pb-24", contentClassName)}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      {...props}
+    <SafeAreaView
+      edges={edges}
+      style={{ flex: 1, backgroundColor: "#F8FAFC" }}
     >
-      {children}
-    </ScrollView>
+      <ScrollView
+        className={cn(
+          "flex-1 bg-[#F8FAFC]",
+          className
+        )}
+        contentContainerClassName={cn(
+          "pb-24",
+          contentClassName
+        )}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        {...props}
+      >
+        {children}
+      </ScrollView>
+    </SafeAreaView>
   );
 }

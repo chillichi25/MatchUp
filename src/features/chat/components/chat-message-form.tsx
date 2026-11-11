@@ -1,8 +1,18 @@
 import { Send } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { useSendMessage } from "../hooks/use-chat";
+
+const GREEN = "#009E45";
+const MIN_INPUT_HEIGHT = 48;
+const MAX_INPUT_HEIGHT = 128;
 
 export function ChatMessageForm({
   conversationId,
@@ -13,6 +23,7 @@ export function ChatMessageForm({
 
   const [message, setMessage] = useState("");
   const [sendError, setSendError] = useState("");
+  const [inputHeight, setInputHeight] = useState(MIN_INPUT_HEIGHT);
 
   const sendingRef = useRef(false);
 
@@ -42,6 +53,7 @@ export function ChatMessageForm({
       }
 
       setMessage("");
+      setInputHeight(MIN_INPUT_HEIGHT);
     } catch {
       setSendError("Couldn't send. Check your connection and try again.");
     } finally {
@@ -52,38 +64,114 @@ export function ChatMessageForm({
   const canSend = message.trim().length > 0 && !send.isPending;
 
   return (
-    <View className="border-t border-slate-200 bg-white px-4 py-3">
+    <View
+      style={{
+        borderTopWidth: 1,
+        borderTopColor: "#E2E8F0",
+        backgroundColor: "#FFFFFF",
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+      }}
+    >
       {sendError ? (
-        <Text className="mb-2 px-2 text-[12px] text-red-500">{sendError}</Text>
+        <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={{
+            marginBottom: 8,
+            paddingHorizontal: 4,
+            color: "#B91C1C",
+            fontSize: 12,
+            lineHeight: 18,
+          }}
+        >
+          {sendError}
+        </Text>
       ) : null}
 
-      <View className="flex-row items-end gap-2">
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: 8,
+        }}
+      >
         <TextInput
+          accessibilityLabel="Message"
           value={message}
           onChangeText={(text) => {
             setMessage(text);
-            if (sendError) setSendError("");
+
+            if (sendError) {
+              setSendError("");
+            }
           }}
+          onContentSizeChange={(event) => {
+            const nextHeight = Math.ceil(
+              event.nativeEvent.contentSize.height
+            );
+
+            setInputHeight(
+              Math.min(
+                MAX_INPUT_HEIGHT,
+                Math.max(MIN_INPUT_HEIGHT, nextHeight)
+              )
+            );
+          }}
+          editable={!send.isPending}
           maxLength={2000}
-          placeholder="Type a message..."
-          placeholderTextColor="#94A3B8"
+          placeholder="Type a message…"
+          placeholderTextColor="#7B8798"
           multiline
-          className="max-h-32 min-h-12 min-w-0 flex-1 rounded-3xl border border-slate-300 bg-white px-5 py-3 text-[14px] leading-6 text-slate-900"
+          textAlignVertical="top"
+          scrollEnabled={inputHeight >= MAX_INPUT_HEIGHT}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            height: inputHeight,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: "#CBD5E1",
+            backgroundColor: "#FFFFFF",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            color: "#07192D",
+            fontSize: 15,
+            lineHeight: 22,
+          }}
         />
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Send message"
-          accessibilityState={{ disabled: !canSend }}
+          accessibilityState={{
+            disabled: !canSend,
+            busy: send.isPending,
+          }}
           disabled={!canSend}
-          onPress={handleSend}
-          className={
-            canSend
-              ? "h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand"
-              : "h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200"
-          }
+          onPress={() => {
+            void handleSend();
+          }}
+          style={{
+            width: 48,
+            height: 48,
+            flexShrink: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 24,
+            backgroundColor:
+              canSend || send.isPending ? GREEN : "#E2E8F0",
+          }}
         >
-          <Send size={19} color={canSend ? "#FFFFFF" : "#94A3B8"} />
+          {send.isPending ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Send
+              size={20}
+              color={canSend ? "#FFFFFF" : "#94A3B8"}
+              strokeWidth={1.9}
+            />
+          )}
         </Pressable>
       </View>
     </View>

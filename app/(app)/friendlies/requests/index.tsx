@@ -1,6 +1,8 @@
 import { useRouter } from "expo-router";
+import { CheckCircle2 } from "lucide-react-native";
 import { Text, View } from "react-native";
 
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Screen, ScreenScroll } from "@/components/ui/screen";
 import { LoadingState } from "@/components/ui/state-views";
@@ -21,62 +23,121 @@ export default function IncomingRequestsScreen() {
 
   return (
     <Screen>
-      <PageHeader title="Friendly Requests" fallbackHref="/matches" />
+      <PageHeader title="Match requests" fallbackHref="/matches" />
 
       {requests.isLoading ? (
         <LoadingState />
       ) : (
-        <ScreenScroll contentContainerClassName="px-5 pb-32">
-          <View className="mt-8">
-            <Text className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Pending
+        <ScreenScroll contentClassName="px-6 pb-8 pt-6">
+          <View className="items-center">
+            <Text
+              accessibilityRole="header"
+              className="text-center text-[28px] tracking-tight text-[#07192D]"
+              style={{ fontWeight: "800" }}
+            >
+              Requests to play
             </Text>
 
-            {pending.length === 0 ? (
-              <View className="rounded-2xl border border-slate-200 bg-white px-6 py-8 shadow-sm">
-                <Text className="text-center font-bold text-slate-900">
-                  No pending requests
-                </Text>
-                <Text className="mt-2 text-center text-sm text-slate-500">
-                  You&apos;re all caught up.
-                </Text>
-              </View>
-            ) : (
-              <View className="gap-3">
-                {pending.map((request) => (
-                  <FriendlyRequestCard
-                    key={request.id}
-                    request={request}
-                    role="incoming"
-                    onPress={() =>
-                      router.push(`/friendlies/requests/${request.id}` as never)
-                    }
-                  />
-                ))}
-              </View>
-            )}
+            <Text className="mt-2 max-w-[320px] text-center text-[15px] leading-[22px] text-[#596B80]">
+              Review teams interested in your friendlies.
+            </Text>
           </View>
 
-          {history.length > 0 ? (
-            <View className="mt-9">
-              <Text className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                History
+          {requests.isError ? (
+            <View className="mt-6 rounded-2xl border border-[#CBD5E1] bg-white p-5">
+              <Text className="text-center text-[15px] font-bold text-[#07192D]">
+                Couldn’t load requests
               </Text>
 
-              <View className="gap-3">
-                {history.map((request) => (
-                  <FriendlyRequestCard
-                    key={request.id}
-                    request={request}
-                    role="incoming"
-                    onPress={() =>
-                      router.push(`/friendlies/requests/${request.id}` as never)
-                    }
-                  />
-                ))}
-              </View>
+              <Text className="mt-2 text-center text-[14px] leading-5 text-[#596B80]">
+                Please try again to see your latest match requests.
+              </Text>
+
+              <Button
+                className="mt-4 min-h-[50px] rounded-full"
+                style={{ backgroundColor: "#009E45" }}
+                loading={requests.isFetching}
+                disabled={requests.isFetching}
+                onPress={() => {
+                  void requests.refetch();
+                }}
+              >
+                Try again
+              </Button>
             </View>
-          ) : null}
+          ) : (
+            <>
+              <View className="mt-6">
+                <Text
+                  accessibilityRole="header"
+                  className="mb-3 text-[15px] font-bold text-[#07192D]"
+                >
+                  Awaiting your response · {pending.length}
+                </Text>
+
+                {pending.length === 0 ? (
+                  <View className="items-center rounded-2xl border border-[#CBD5E1] bg-white px-5 py-7">
+                    <View className="h-12 w-12 items-center justify-center rounded-full bg-green-50">
+                      <CheckCircle2
+                        size={24}
+                        color="#009E45"
+                        strokeWidth={1.8}
+                      />
+                    </View>
+
+                    <Text className="mt-3 text-center text-[15px] font-bold text-[#07192D]">
+                      You’re all caught up
+                    </Text>
+
+                    <Text className="mt-2 text-center text-[14px] leading-5 text-[#596B80]">
+                      New requests to play your friendlies will appear here.
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="gap-3">
+                    {pending.map((request) => (
+                      <FriendlyRequestCard
+                        key={request.id}
+                        request={request}
+                        role="incoming"
+                        onPress={() =>
+                          router.push(
+                            `/friendlies/requests/${request.id}` as never
+                          )
+                        }
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {history.length > 0 ? (
+                <View className="mt-7">
+                  <Text
+                    accessibilityRole="header"
+                    className="mb-3 text-[15px] font-bold text-[#07192D]"
+                  >
+                    History
+                  </Text>
+
+                  <View className="gap-3">
+                    {history.map((request) => (
+                      <FriendlyRequestCard
+                        key={request.id}
+                        request={request}
+                        role="incoming"
+                        onPress={() =>
+                          router.push(
+                            `/friendlies/requests/${request.id}` as never
+                          )
+                        }
+                      />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+            </>
+          )}
         </ScreenScroll>
       )}
     </Screen>

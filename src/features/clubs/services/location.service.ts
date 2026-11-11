@@ -48,10 +48,8 @@ export function toLocationValue(result: LocationResult): LocationValue {
     country: result.country,
     lat: result.lat,
     lng: result.lng,
-    formatted:
-      result.formatted ||
-      [result.city, result.county, result.country]
-        .filter(Boolean)
-        .join(", "),
+    formatted: [result.city, result.country]
+      .filter(Boolean)
+      .join(", "),
   };
 }

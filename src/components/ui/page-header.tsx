@@ -12,15 +12,15 @@ export function PageHeader({ title, fallbackHref, right }: PageHeaderProps) {
   const router = useRouter();
 
   function handleBack() {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-
-    if (fallbackHref) {
-      router.replace(fallbackHref as never);
-    }
+  if (router.canGoBack()) {
+    router.back();
+    return;
   }
+
+  if (fallbackHref) {
+    router.replace(fallbackHref as never);
+  }
+}
 
   return (
     <View className="flex-row items-center px-4 pt-2">

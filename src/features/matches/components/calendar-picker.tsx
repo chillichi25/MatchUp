@@ -18,6 +18,7 @@ const MONTHS = [
 ] as const;
 
 const WEEKDAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
+const GREEN = "#009E45";
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -47,7 +48,6 @@ export function CalendarPicker({
   onClear,
 }: CalendarPickerProps) {
   const today = useMemo(() => new Date(), []);
-
   const selected = value ? parseDateOnly(value) : null;
 
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -205,16 +205,23 @@ type TimePickerProps = {
   onChange: (time: string) => void;
 };
 
-/** 24-hour hour/minute selector returning `HH:mm`. */
+/** 24-hour selector that emits a time once both parts are set. */
 export function TimePicker({ value, onChange }: TimePickerProps) {
-  const [initialHour, initialMinute] =
-    value && value.includes(":") ? value.split(":") : ["", ""];
+  const [initialHour = "", initialMinute = ""] = value.split(":");
 
   const [hour, setHour] = useState(initialHour);
   const [minute, setMinute] = useState(initialMinute);
 
+  const completeTime = hour && minute ? `${hour}:${minute}` : "";
+
+  // Keep an existing saved minute visible if it falls outside the grid.
+  const minuteOptions = minute && !MINUTES.includes(minute)
+    ? [...MINUTES, minute].sort()
+    : MINUTES;
+
   function chooseHour(next: string) {
     setHour(next);
+
     if (minute) {
       onChange(`${next}:${minute}`);
     }
@@ -222,6 +229,7 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
 
   function chooseMinute(next: string) {
     setMinute(next);
+
     if (hour) {
       onChange(`${hour}:${next}`);
     }
@@ -229,9 +237,16 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
 
   return (
     <View className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <View className="border-b border-slate-100 px-4 py-3">
-        <Text className="text-center text-[13px] font-bold text-slate-950">
-          Select kick-off time
+      <View className="min-h-[48px] justify-center border-b border-slate-100 px-4 py-2">
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-center font-bold"
+          style={{
+            color: completeTime ? "#07192D" : "#64748B",
+            fontSize: completeTime ? 20 : 13,
+          }}
+        >
+          {completeTime || "Choose an hour and minute"}
         </Text>
       </View>
 
@@ -242,33 +257,34 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
           </Text>
 
           <View className="flex-row flex-wrap px-2 pb-2">
-            {HOURS.map((option) => (
-              <Pressable
-                key={option}
-                accessibilityRole="button"
-                accessibilityState={{ selected: hour === option }}
-                onPress={() => chooseHour(option)}
-                className="w-1/3 items-center justify-center py-1"
-              >
-                <View
-                  className={
-                    hour === option
-                      ? "w-full items-center rounded-xl bg-green-50 py-2"
-                      : "w-full items-center rounded-xl py-2"
-                  }
+            {HOURS.map((option) => {
+              const isSelected = hour === option;
+
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Hour ${option}`}
+                  accessibilityState={{ selected: isSelected }}
+                  onPress={() => chooseHour(option)}
+                  className="w-1/3 items-center justify-center px-0.5 py-1"
                 >
-                  <Text
-                    className={
-                      hour === option
-                        ? "text-[13px] font-semibold text-[#00A638]"
-                        : "text-[13px] font-medium text-slate-700"
-                    }
+                  <View
+                    className="w-full items-center rounded-xl py-2"
+                    style={{
+                      backgroundColor: isSelected ? GREEN : "transparent",
+                    }}
                   >
-                    {option}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
+                    <Text
+                      className="text-[13px] font-semibold"
+                      style={{ color: isSelected ? "#FFFFFF" : "#334155" }}
+                    >
+                      {option}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -278,33 +294,34 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
           </Text>
 
           <View className="flex-row flex-wrap px-2 pb-2">
-            {MINUTES.map((option) => (
-              <Pressable
-                key={option}
-                accessibilityRole="button"
-                accessibilityState={{ selected: minute === option }}
-                onPress={() => chooseMinute(option)}
-                className="w-1/2 items-center justify-center py-1"
-              >
-                <View
-                  className={
-                    minute === option
-                      ? "w-full items-center rounded-xl bg-green-50 py-2"
-                      : "w-full items-center rounded-xl py-2"
-                  }
+            {minuteOptions.map((option) => {
+              const isSelected = minute === option;
+
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Minute ${option}`}
+                  accessibilityState={{ selected: isSelected }}
+                  onPress={() => chooseMinute(option)}
+                  className="w-1/2 items-center justify-center px-0.5 py-1"
                 >
-                  <Text
-                    className={
-                      minute === option
-                        ? "text-[13px] font-semibold text-[#00A638]"
-                        : "text-[13px] font-medium text-slate-700"
-                    }
+                  <View
+                    className="w-full items-center rounded-xl py-2"
+                    style={{
+                      backgroundColor: isSelected ? GREEN : "transparent",
+                    }}
                   >
-                    {option}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
+                    <Text
+                      className="text-[13px] font-semibold"
+                      style={{ color: isSelected ? "#FFFFFF" : "#334155" }}
+                    >
+                      {option}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       </View>

@@ -1,9 +1,14 @@
 import { useRouter } from "expo-router";
-import { Volleyball } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 
 import { ScreenScroll } from "@/components/ui/screen";
-import { ErrorState, LoadingState } from "@/components/ui/state-views";
+import { ErrorState } from "@/components/ui/state-views";
 import { ActionCentre } from "@/features/dashboard/components/action-centre";
 import { DashboardActions } from "@/features/dashboard/components/dashboard-actions";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
@@ -15,6 +20,7 @@ import { TeamPerformance } from "@/features/dashboard/components/team-performanc
 import { Upcoming } from "@/features/dashboard/components/upcoming";
 import { useDashboard } from "@/features/dashboard/hooks/use-dashboard";
 import { useActiveTeam } from "@/features/teams/hooks/use-teams";
+import { ChevronRight, Volleyball } from "lucide-react-native";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -25,18 +31,41 @@ export default function DashboardScreen() {
   const data = dashboard.data;
 
   if (dashboard.isLoading) {
-    return (
-      <ScreenScroll contentClassName="px-5 pb-24 pt-6">
-        <DashboardHeader coachName="Coach" />
-        <LoadingState label="Loading your dashboard…" />
-      </ScreenScroll>
-    );
-  }
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={() => {}}
+    >
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#FFFFFF",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator
+          size="small"
+          color="#009E45"
+          accessibilityLabel="Loading your dashboard"
+        />
+      </View>
+    </Modal>
+  );
+}
 
   if (dashboard.isError || !data) {
     return (
-      <ScreenScroll contentClassName="px-5 pb-24 pt-6">
+      <ScreenScroll
+  edges={["top"]}
+  contentClassName="px-6 pb-8 pt-4"
+>
         <DashboardHeader coachName="Coach" />
+
         <ErrorState
           title="Couldn't load your dashboard"
           description="Check your connection and try again."
@@ -73,9 +102,14 @@ export default function DashboardScreen() {
 
   let nextEvent: "match" | "tournament" | null = null;
 
-  if (nextMatchDateTime !== null && nextTournamentDateTime !== null) {
+  if (
+    nextMatchDateTime !== null &&
+    nextTournamentDateTime !== null
+  ) {
     nextEvent =
-      nextMatchDateTime <= nextTournamentDateTime ? "match" : "tournament";
+      nextMatchDateTime <= nextTournamentDateTime
+        ? "match"
+        : "tournament";
   } else if (nextMatchDateTime !== null) {
     nextEvent = "match";
   } else if (nextTournamentDateTime !== null) {
@@ -90,12 +124,14 @@ export default function DashboardScreen() {
         : null;
 
   return (
-    <ScreenScroll contentClassName="px-5 pb-24 pt-6">
+    <ScreenScroll
+  edges={["top"]}
+  contentClassName="px-6 pb-8 pt-4"
+>
       <DashboardHeader coachName={coachName} />
 
       <DashboardActions />
 
-      {/* Up Next */}
       <View className="mt-6">
         <View className="flex-row items-center justify-between">
           <Text className="text-[18px] font-bold tracking-tight text-slate-950">
@@ -106,7 +142,7 @@ export default function DashboardScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="View all upcoming"
-              onPress={() => router.push("/matches")}
+              onPress={() => router.push("/matches/upcoming")}
             >
               <Text className="text-[13px] font-semibold text-[#00B83F]">
                 View all ›
@@ -126,7 +162,11 @@ export default function DashboardScreen() {
         {!nextEvent ? (
           <View className="mt-3 flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
             <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-50">
-              <Volleyball size={20} color="#00B83F" strokeWidth={2} />
+              <Volleyball
+                size={20}
+                color="#00B83F"
+                strokeWidth={2}
+              />
             </View>
 
             <View className="min-w-0 flex-1">
@@ -135,8 +175,17 @@ export default function DashboardScreen() {
               </Text>
 
               <Text className="mt-0.5 text-[11px] leading-[16px] text-slate-500">
-                Your next match or tournament will appear here.
+                Find a friendly for your team.
               </Text>
+              <Pressable
+  accessibilityRole="button"
+  onPress={() => router.push("/matches")}
+  className="mt-2 min-h-[44px] self-start justify-center rounded-full bg-[#009E45] px-4 active:opacity-80"
+>
+  <Text className="text-[13px] font-semibold text-white">
+    Find a match
+  </Text>
+</Pressable>
             </View>
           </View>
         ) : null}
@@ -147,7 +196,10 @@ export default function DashboardScreen() {
         awaitingResponses={stats.awaitingResponses}
       />
 
-      <LookingForMatch friendly={friendly} tournament={tournament} />
+      <LookingForMatch
+        friendly={friendly}
+        tournament={tournament}
+      />
 
       <Upcoming
         matches={upcomingMatches}
@@ -156,26 +208,17 @@ export default function DashboardScreen() {
         nextEventId={nextEventId}
       />
 
-      {(statistics?.played ?? 0) > 0 && statistics ? (
-        <TeamPerformance
-          played={statistics.played}
-          wins={statistics.wins}
-          draws={statistics.draws}
-          losses={statistics.losses}
-        />
-      ) : null}
-
-      {recentResults.length > 0 ? (
+{recentResults.length > 0 ? (
         <View className="mt-8">
           <View className="flex-row items-center justify-between">
             <Text className="text-[18px] font-bold tracking-tight text-slate-950">
-              Recent Results
+              Recent results
             </Text>
 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="View all results"
-              onPress={() => router.push("/matches")}
+              onPress={() => router.push("/matches/history")}
             >
               <Text className="text-[13px] font-semibold text-[#00B83F]">
                 View all ›
@@ -185,11 +228,24 @@ export default function DashboardScreen() {
 
           <View className="mt-3 gap-3">
             {recentResults.slice(0, 3).map((result) => (
-              <ResultCard key={result.id} result={result} />
+              <ResultCard
+                key={result.id}
+                result={result}
+              />
             ))}
           </View>
         </View>
       ) : null}
+      {(statistics?.played ?? 0) > 0 && statistics ? (
+        <TeamPerformance
+          played={statistics.played}
+          wins={statistics.wins}
+          draws={statistics.draws}
+          losses={statistics.losses}
+        />
+      ) : null}
+
+      
     </ScreenScroll>
   );
 }

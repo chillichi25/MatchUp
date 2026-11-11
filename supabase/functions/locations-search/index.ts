@@ -1,11 +1,12 @@
+/// <reference types="https://deno.land/x/deno/cli/tsc/dts/lib.deno.d.ts" />
 // Supabase Edge Function: locations-search
 //
-// Proxies town/city autocomplete to Geoapify so the API key stays a server-side
-// secret. Closely follows the retired Next.js route at
-// legacy/next-app/api/locations/search/route.ts.
+// Proxies town/city autocomplete to Geoapify.
+// Keep GEOAPIFY_API_KEY stored as a Supabase secret.
 //
-// Deploy with:  supabase functions deploy locations-search
-// Set secret:   supabase secrets set GEOAPIFY_API_KEY=...
+// Deploy with:
+// supabase functions deploy locations-search
+
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -14,35 +15,38 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type GeoapifyFeature = {
-  properties?: {
-    place_id?: string;
-    name?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-    municipality?: string;
-    county?: string;
-    state_district?: string;
-    state?: string;
-    country?: string;
-    country_code?: string;
-    formatted?: string;
-    lat?: number;
-    lon?: number;
-  };
+type GeoapifyResult = {
+  place_id?: string;
+  name?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  county?: string;
+  state_district?: string;
+  state?: string;
+  country?: string;
+  country_code?: string;
+  formatted?: string;
+  lat?: number;
+  lon?: number;
 };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    headers: {
+      ...CORS_HEADERS,
+      "Content-Type": "application/json",
+    },
   });
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS_HEADERS });
+    return new Response("ok", {
+      headers: CORS_HEADERS,
+    });
   }
 
   if (req.method !== "POST") {
@@ -52,23 +56,35 @@ Deno.serve(async (req: Request) => {
   const apiKey = Deno.env.get("GEOAPIFY_API_KEY");
 
   if (!apiKey) {
-    return json({ error: "Location search is not configured." }, 500);
+    return json(
+      { error: "Location search is not configured." },
+      500
+    );
   }
 
   let query = "";
 
   try {
     const body = await req.json();
-    query = typeof body?.query === "string" ? body.query.trim() : "";
+
+    query =
+      typeof body?.query === "string"
+        ? body.query.trim()
+        : "";
   } catch {
-    return json({ error: "Unable to search locations." }, 400);
+    return json(
+      { error: "Unable to search locations." },
+      400
+    );
   }
 
   if (query.length < 2) {
     return json({ results: [] });
   }
 
-  const url = new URL("https://api.geoapify.com/v1/geocode/autocomplete");
+  const url = new URL(
+    "https://api.geoapify.com/v1/geocode/autocomplete"
+  );
 
   url.searchParams.set("text", query);
   url.searchParams.set("format", "json");
@@ -82,46 +98,51 @@ Deno.serve(async (req: Request) => {
     const response = await fetch(url.toString());
 
     if (!response.ok) {
-      return json({ error: "Unable to search locations." }, 502);
+      return json(
+        { error: "Unable to search locations." },
+        502
+      );
     }
 
-    const data = (await response.json()) as { results?: GeoapifyFeature[] };
+    const data = (await response.json()) as {
+      results?: GeoapifyResult[];
+    };
+
     const lowerQuery = query.toLowerCase();
 
     const results = (data.results ?? [])
-      .map((feature) => {
-        const properties = feature.properties ?? {};
-
+      .map((result) => {
+        // With format=json, fields are directly on the result.
         const city =
-          properties.city ??
-          properties.town ??
-          properties.village ??
-          properties.municipality ??
-          properties.name ??
+          result.city ??
+          result.town ??
+          result.village ??
+          result.municipality ??
+          result.name ??
           "";
 
         const county =
-          properties.county ??
-          properties.state_district ??
-          properties.state ??
+          result.county ??
+          result.state_district ??
+          result.state ??
           "";
 
-        const country = properties.country ?? "";
-        const lat = Number(properties.lat);
-        const lng = Number(properties.lon);
+        const country = result.country ?? "";
+        const lat = Number(result.lat);
+        const lng = Number(result.lon);
 
         return {
           id:
-            properties.place_id ??
+            result.place_id ??
             (Number.isFinite(lat) && Number.isFinite(lng)
               ? `${lat}-${lng}`
               : city),
-          name: properties.name ?? city,
+          name: result.name ?? city,
           city,
           county,
           country,
-          countryCode: properties.country_code ?? "",
-          formatted: properties.formatted ?? "",
+          countryCode: result.country_code ?? "",
+          formatted: result.formatted ?? "",
           lat,
           lng,
         };
@@ -137,28 +158,46 @@ Deno.serve(async (req: Request) => {
       );
 
     results.sort((a, b) => {
-      const aExact = a.city.toLowerCase() === lowerQuery ? 0 : 1;
-      const bExact = b.city.toLowerCase() === lowerQuery ? 0 : 1;
+      const aExact =
+        a.city.toLowerCase() === lowerQuery ? 0 : 1;
+      const bExact =
+        b.city.toLowerCase() === lowerQuery ? 0 : 1;
 
-      if (aExact !== bExact) return aExact - bExact;
+      if (aExact !== bExact) {
+        return aExact - bExact;
+      }
 
       return a.city.length - b.city.length;
     });
 
     const seen = new Set<string>();
-    const deduped = [];
+
+    const deduped: typeof results = [];
 
     for (const result of results) {
-      const key = `${result.city}|${result.county}|${result.country}`.toLowerCase();
+      const key = [
+        result.city,
+        result.county,
+        result.country,
+      ]
+        .join("|")
+        .toLowerCase();
 
-      if (seen.has(key)) continue;
+      if (seen.has(key)) {
+        continue;
+      }
 
       seen.add(key);
       deduped.push(result);
     }
 
-    return json({ results: deduped.slice(0, 6) });
+    return json({
+      results: deduped.slice(0, 6),
+    });
   } catch {
-    return json({ error: "Unable to search locations." }, 500);
+    return json(
+      { error: "Unable to search locations." },
+      500
+    );
   }
 });

@@ -258,9 +258,29 @@ export async function getConversation(
     return null;
   }
 
-  const opponentTeamId = isHomeMember.data
-    ? match.away_team_id
-    : match.home_team_id;
+  const activeTeam = await getActiveTeam();
+
+let opponentTeamId: string;
+
+if (
+  activeTeam?.id === match.home_team_id &&
+  isHomeMember.data
+) {
+  opponentTeamId = match.away_team_id;
+} else if (
+  activeTeam?.id === match.away_team_id &&
+  isAwayMember.data
+) {
+  opponentTeamId = match.home_team_id;
+} else if (isHomeMember.data && !isAwayMember.data) {
+  opponentTeamId = match.away_team_id;
+} else if (isAwayMember.data && !isHomeMember.data) {
+  opponentTeamId = match.home_team_id;
+} else {
+  // Both memberships are valid, but there is no active
+  // participant team to establish which side to display.
+  return null;
+}
 
   const { data: opponent, error: opponentError } = await supabase
     .from("teams")

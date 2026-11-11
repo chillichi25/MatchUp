@@ -1,96 +1,316 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Building2, ChevronLeft, Clock3, Shirt } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { Clock3, Shield, Shirt } from "lucide-react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { ScreenScroll } from "@/components/ui/screen";
 import {
   useClub,
   useClubTeams,
 } from "@/features/clubs/hooks/use-club-queries";
 import { formatTeamDetails } from "@/features/clubs/utils/team-labels";
 
+const NAVY = "#07192D";
+const GREEN = "#009E45";
+const MUTED = "#596B80";
+const BACKGROUND = "#F8FAFC";
+
 export default function JoinClubPendingScreen() {
   const router = useRouter();
+
   const { clubId, teamId } = useLocalSearchParams<{
     clubId: string;
     teamId?: string;
   }>();
 
-  const { data: club } = useClub(clubId);
+  const {
+    data: club,
+    isLoading: loadingClub,
+    isError: clubError,
+    refetch: refetchClub,
+  } = useClub(clubId);
+
   const { data: teams = [] } = useClubTeams(clubId);
 
-  const team = teamId ? teams.find((item) => item.id === teamId) : undefined;
+  const team = teamId
+    ? teams.find((item) => item.id === teamId)
+    : undefined;
 
   return (
-    <ScreenScroll contentClassName="px-7 pb-10">
-      <View className="h-12 flex-row items-center">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={10}
-          onPress={() => router.back()}
-          className="h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white"
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <ChevronLeft size={20} color="#07192D" strokeWidth={2} />
-        </Pressable>
-      </View>
+          <View style={styles.content}>
+            <View style={styles.topBar}>
+              <Text style={styles.topBarTitle}>Request sent</Text>
+            </View>
 
-      <View className="mt-4 items-center">
-        {club?.badge_url ? (
-          <Avatar uri={club.badge_url} name={club.name} size={82} />
-        ) : (
-          <View className="h-[82px] w-[82px] items-center justify-center">
-            <Building2 size={42} color="#94A3B8" strokeWidth={1.8} />
+            <View style={styles.introduction}>
+              <Text accessibilityRole="header" style={styles.heading}>
+                Awaiting approval
+              </Text>
+
+              <Text style={styles.description}>
+                A club owner or admin will review your request to join.
+              </Text>
+            </View>
+
+            <View style={styles.clubSection}>
+              {loadingClub ? (
+                <View style={styles.badgePlaceholder}>
+                  <ActivityIndicator size="small" color={GREEN} />
+                </View>
+              ) : club?.badge_url ? (
+                <Avatar
+                  uri={club.badge_url}
+                  name={club.name}
+                  size={80}
+                />
+              ) : (
+                <View style={styles.fallbackBadge}>
+                  <Shield
+                    size={32}
+                    color={GREEN}
+                    strokeWidth={1.8}
+                  />
+                </View>
+              )}
+
+              {club ? (
+                <Text style={styles.clubName}>{club.name}</Text>
+              ) : null}
+
+              <View style={styles.statusBadge}>
+                <Clock3 size={15} color="#B45309" strokeWidth={1.8} />
+                <Text style={styles.statusText}>Pending approval</Text>
+              </View>
+
+              {clubError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>
+                    We couldn&apos;t load the club details.
+                  </Text>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      void refetchClub();
+                    }}
+                    style={styles.retryButton}
+                  >
+                    <Text style={styles.retryText}>Try again</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+
+            {team ? (
+              <View style={styles.teamCard}>
+                <View style={styles.teamIcon}>
+                  <Shirt
+                    size={20}
+                    color={GREEN}
+                    strokeWidth={1.8}
+                  />
+                </View>
+
+                <View style={styles.teamContent}>
+                  <Text style={styles.teamName}>{team.name}</Text>
+
+                  <Text style={styles.teamDetails}>
+                    {formatTeamDetails(team)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.footer}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.replace("/clubs/pending")}
+                className="min-h-[50px] w-full items-center justify-center rounded-full bg-[#009E45] px-6 py-3 active:opacity-80"
+              >
+                <Text style={styles.buttonText}>Done</Text>
+              </Pressable>
+
+              <Text style={styles.footerText}>
+                You can check your request status when you return.
+              </Text>
+            </View>
           </View>
-        )}
-
-        <Text className="mt-4 text-center text-[22px] font-bold tracking-tight text-slate-900">
-          {club?.name ?? "Club"}
-        </Text>
-      </View>
-
-      <View className="mt-8 items-center">
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-amber-50">
-          <Clock3 size={28} color="#D97706" strokeWidth={2} />
-        </View>
-
-        <Text className="mt-5 text-[22px] font-bold tracking-tight text-slate-900">
-          Awaiting approval
-        </Text>
-
-        <Text className="mt-2 max-w-[300px] text-center text-[14px] leading-5 text-slate-500">
-          {team
-            ? `Your request to join ${team.name} is waiting for club approval.`
-            : "Your request is waiting for club approval."}
-        </Text>
-
-        <Text className="mt-1 text-[12px] text-slate-400">
-          We&apos;ll let you know when the club responds.
-        </Text>
-      </View>
-
-      {team ? (
-        <View className="mt-7 flex-row items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#E4F9EB]">
-            <Shirt size={20} color="#00B83F" strokeWidth={1.9} />
-          </View>
-
-          <View className="min-w-0 flex-1">
-            <Text className="text-[15px] font-semibold text-slate-900">
-              {team.name}
-            </Text>
-            <Text className="mt-1 text-[13px] text-slate-500">
-              {formatTeamDetails(team)}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      <Button className="mt-8" onPress={() => router.replace("/clubs/pending")}>
-        Done
-      </Button>
-    </ScreenScroll>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: BACKGROUND,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    flexGrow: 1,
+    width: "100%",
+    maxWidth: 440,
+    alignSelf: "center",
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  topBar: {
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topBarTitle: {
+    color: NAVY,
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  introduction: {
+    marginTop: 24,
+    alignItems: "center",
+  },
+  heading: {
+    color: NAVY,
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -1.7,
+    textAlign: "center",
+  },
+  description: {
+    maxWidth: 300,
+    marginTop: 8,
+    color: MUTED,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  clubSection: {
+    marginTop: 32,
+    alignItems: "center",
+  },
+  badgePlaceholder: {
+    width: 80,
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fallbackBadge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#E4F5EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clubName: {
+    marginTop: 16,
+    color: NAVY,
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  statusBadge: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "#FFF7E6",
+  },
+  statusText: {
+    color: "#B45309",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  errorContainer: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  errorText: {
+    color: MUTED,
+    fontSize: 13,
+    textAlign: "center",
+  },
+  retryButton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  retryText: {
+    color: GREEN,
+    fontSize: 13,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  teamCard: {
+    marginTop: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+  },
+  teamIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#E4F5EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  teamContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  teamName: {
+    color: NAVY,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  teamDetails: {
+    marginTop: 4,
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  footer: {
+    marginTop: "auto",
+    paddingTop: 40,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  footerText: {
+    marginTop: 12,
+    color: MUTED,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+});

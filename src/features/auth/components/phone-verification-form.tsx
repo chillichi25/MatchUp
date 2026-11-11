@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -14,70 +15,162 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthTopBar } from "./auth-top-bar";
 
 /**
- * Phone verification is static UI for the MVP: the PRD keeps phone
- * verification out of scope, so the number is not submitted. The Send code
- * action only advances the flow.
+ * Prototype only.
+ * TODO: connect SMS sending and verification before enabling this flow.
+ * The number is not saved and no verification code is sent.
  */
 export function PhoneVerificationForm() {
   const router = useRouter();
+
   const [phone, setPhone] = useState("");
+  const [focused, setFocused] = useState(false);
 
   return (
     <View className="flex-1 bg-[#F8FAFC]">
-      <SafeAreaView className="flex-1" edges={["top", "bottom"]}>
+      <SafeAreaView
+        style={{ flex: 1 }}
+        edges={["top", "bottom"]}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="flex-1"
+          style={{ flex: 1 }}
         >
-          <View className="mx-auto w-full max-w-md flex-1 px-7 pb-6 pt-5">
-            <AuthTopBar title="Verify phone" backHref="/register" />
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingHorizontal: 24,
+              paddingTop: 16,
+              paddingBottom: 32,
+            }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
+            <View
+              style={{
+                width: "100%",
+                maxWidth: 440,
+                alignSelf: "center",
+              }}
+            >
+              <AuthTopBar
+                title="Verify phone"
+                backHref="/register"
+              />
 
-            <View className="mt-5 items-center">
-              <Text className="text-[28px] font-bold tracking-tight text-slate-900">
-                Verify your phone
-              </Text>
+              <View
+                style={{
+                  marginTop: 40,
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  accessibilityRole="header"
+                  style={{
+                    color: "#07192D",
+                    fontSize: 28,
+                    fontWeight: "800",
+                    letterSpacing: -1.7,
+                    textAlign: "center",
+                  }}
+                >
+                  Verify your phone
+                </Text>
 
-              <Text className="mt-2 text-[15px] text-slate-400">
-                We&apos;ll send you a 6-digit verification code.
-              </Text>
-            </View>
-
-            <View className="mt-8">
-              <Text className="mb-2 text-sm font-medium text-slate-800">
-                Mobile number
-              </Text>
-
-              <View className="h-14 flex-row items-center rounded-xl border border-gray-200 bg-white px-4">
-                <Smartphone size={19} color="#94A3B8" strokeWidth={1.8} />
-
-                <View className="ml-4 shrink-0 items-center border-r border-gray-200 pr-3">
-                  <Text className="text-sm font-medium text-slate-700">
-                    +44
-                  </Text>
-                </View>
-
-                <TextInput
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  autoComplete="tel"
-                  placeholder="Mobile number"
-                  placeholderTextColor="#94A3B8"
-                  className="ml-3 h-full min-w-0 flex-1 text-sm text-slate-900"
-                />
+                <Text
+                  style={{
+                    marginTop: 6,
+                    color: "#596B80",
+                    fontSize: 15,
+                    lineHeight: 20,
+                    textAlign: "center",
+                  }}
+                >
+                  We&apos;ll text you a 6-digit code.
+                </Text>
               </View>
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push("/register/phone/verify")}
-                className="mt-5 h-12 w-full items-center justify-center rounded-full bg-[#00B83F]"
-              >
-                <Text className="text-sm font-semibold text-white">
-                  Send code
+              <View className="mt-9">
+                <Text className="mb-1 text-[14px] font-semibold text-[#07192D]">
+                  Mobile number
                 </Text>
-              </Pressable>
+
+                <View
+                  style={{
+                    minHeight: 56,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: focused
+                      ? "#009E45"
+                      : "#CBD5E1",
+                    backgroundColor: "#FFFFFF",
+                    paddingHorizontal: 16,
+                  }}
+                >
+                  <Smartphone
+                    size={20}
+                    color="#7B8798"
+                    strokeWidth={1.8}
+                  />
+
+                  <View
+                    style={{
+                      marginLeft: 12,
+                      paddingRight: 12,
+                      borderRightWidth: 1,
+                      borderRightColor: "#E2E8F0",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#07192D",
+                        fontSize: 16,
+                      }}
+                    >
+                      +44
+                    </Text>
+                  </View>
+
+                  <TextInput
+                    value={phone}
+                    onChangeText={setPhone}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                    accessibilityLabel="UK mobile number"
+                    keyboardType="phone-pad"
+                    autoComplete="tel-national"
+                    placeholder="Mobile number"
+                    placeholderTextColor="#7B8798"
+                    selectionColor="#009E45"
+                    underlineColorAndroid="transparent"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      minHeight: 54,
+                      marginLeft: 12,
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      color: "#07192D",
+                    }}
+                  />
+                </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push("/register/phone/verify")
+                  }
+                  className="mt-5 min-h-[50px] w-full items-center justify-center rounded-full bg-[#009E45] px-6 py-3 active:opacity-80"
+                >
+                  <Text className="text-[16px] font-bold text-white">
+                    Send code
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

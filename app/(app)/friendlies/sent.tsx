@@ -4,7 +4,11 @@ import { Text, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Screen, ScreenScroll } from "@/components/ui/screen";
-import { EmptyState, LoadingState } from "@/components/ui/state-views";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/ui/state-views";
 import { FriendlyRequestCard } from "@/features/friendlies/components/friendly-request-card";
 import {
   useOutgoingRequestHistory,
@@ -17,89 +21,124 @@ export default function SentRequestsScreen() {
   const requests = useOutgoingRequests();
   const history = useOutgoingRequestHistory();
 
-  const isLoading = requests.isLoading || history.isLoading;
   const pending = requests.data ?? [];
   const past = history.data ?? [];
 
   return (
     <Screen>
-      <PageHeader title="Awaiting response" fallbackHref="/dashboard" />
+      <PageHeader title="Sent requests" fallbackHref="/matches" />
 
-      {isLoading ? (
-        <LoadingState />
-      ) : (
-        <ScreenScroll contentContainerClassName="px-6 pb-32">
-          <View className="mt-8">
-            <Text className="text-2xl font-bold tracking-tight text-slate-950">
-              Awaiting response
-            </Text>
-            <Text className="mt-2 text-sm leading-6 text-slate-500">
-              Track friendly requests you&apos;ve sent to other teams.
-            </Text>
-          </View>
+      <ScreenScroll
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 24,
+          paddingBottom: 128,
+        }}
+      >
+        <View className="items-center">
+          <Text
+            accessibilityRole="header"
+            className="text-center text-[26px] font-bold tracking-tight text-[#07192D]"
+          >
+            Requests you&apos;ve sent
+          </Text>
 
-          <View className="mt-8">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-semibold text-slate-500">
-                Sent requests
-              </Text>
-              <Text className="text-sm text-slate-400">{pending.length}</Text>
-            </View>
+          <Text className="mt-2 text-center text-[14px] leading-5 text-[#596B80]">
+            Track responses from other teams.
+          </Text>
+        </View>
 
-            {pending.length === 0 ? (
-              <View className="mt-3">
+        <View className="mt-6">
+          <Text
+            accessibilityRole="header"
+            className="text-[14px] font-bold text-[#07192D]"
+          >
+            Awaiting response
+            {!requests.isLoading && !requests.isError
+              ? ` · ${pending.length}`
+              : ""}
+          </Text>
+
+          <View className="mt-3">
+            {requests.isLoading ? (
+              <LoadingState />
+            ) : requests.isError ? (
+              <ErrorState
+                description="We couldn't load your pending requests."
+                onRetry={() => requests.refetch()}
+              />
+            ) : pending.length === 0 ? (
+              <View>
                 <EmptyState
-                  title="No requests waiting"
-                  description="Friendly requests waiting for a response will appear here."
+                  title="No requests awaiting response"
+                  description="Requests you've sent will appear here while the other coach reviews them."
                 />
 
                 <View className="mt-4">
-                  <Button onPress={() => router.push("/matches" as never)}>
-                    Find matches
+                  <Button
+                    className="min-h-[50px] rounded-full bg-[#009E45]"
+                    onPress={() => router.push("/matches" as never)}
+                  >
+                    Find a match
                   </Button>
                 </View>
               </View>
             ) : (
-              <View className="mt-3 gap-4">
+              <View className="gap-3">
                 {pending.map((request) => (
                   <FriendlyRequestCard
                     key={request.id}
                     request={request}
                     role="outgoing"
                     onPress={() =>
-                      router.push(`/friendlies/requests/${request.id}` as never)
+                      router.push(
+                        `/friendlies/requests/${request.id}` as never
+                      )
                     }
                   />
                 ))}
               </View>
             )}
           </View>
+        </View>
 
-          {past.length > 0 ? (
-            <View className="mt-10">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-sm font-semibold text-slate-500">
-                  History
-                </Text>
-                <Text className="text-sm text-slate-400">{past.length}</Text>
-              </View>
+        {history.isLoading || history.isError || past.length > 0 ? (
+          <View className="mt-7">
+            <Text
+              accessibilityRole="header"
+              className="text-[14px] font-bold text-[#07192D]"
+            >
+              History
+            </Text>
 
-              <View className="mt-3 gap-4">
-                {past.map((request) => (
-                  <FriendlyRequestCard
-                    key={request.id}
-                    request={request}
-                    role="outgoing"
-                    onPress={() =>
-                      router.push(`/friendlies/requests/${request.id}` as never)
-                    }
-                  />
-                ))}
-              </View>
+            <View className="mt-3">
+              {history.isLoading ? (
+                <LoadingState />
+              ) : history.isError ? (
+                <ErrorState
+                  description="We couldn't load your request history."
+                  onRetry={() => history.refetch()}
+                />
+              ) : (
+                <View className="gap-3">
+                  {past.map((request) => (
+                    <FriendlyRequestCard
+                      key={request.id}
+                      request={request}
+                      role="outgoing"
+                      onPress={() =>
+                        router.push(
+                          `/friendlies/requests/${request.id}` as never
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+              )}
             </View>
-          ) : null}
-        </ScreenScroll>
-      )}
+          </View>
+        ) : null}
+      </ScreenScroll>
     </Screen>
   );
 }

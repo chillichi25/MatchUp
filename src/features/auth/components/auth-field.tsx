@@ -1,4 +1,9 @@
-import { forwardRef, useState, type ComponentRef, type ReactNode } from "react";
+import {
+  forwardRef,
+  useState,
+  type ComponentRef,
+  type ReactNode,
+} from "react";
 import {
   Pressable,
   Text,
@@ -29,36 +34,87 @@ export const AuthField = forwardRef<
     rightAccessory,
     containerClassName,
     className,
+    style,
+    onFocus,
+    onBlur,
+    editable = true,
+    accessibilityLabel,
+    placeholderTextColor = "#64748B",
     ...props
   },
   ref
 ) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <View className={cn("w-full", containerClassName)}>
       {label ? (
-        <Text className="mb-2 text-sm font-medium text-slate-800">{label}</Text>
+        <Text className="mb-1 text-[14px] font-semibold text-[#07192D]">
+          {label}
+        </Text>
       ) : null}
 
       <View
         className={cn(
-          "h-14 flex-row items-center rounded-xl border bg-white px-4",
-          error ? "border-red-400" : "border-gray-200"
+          "min-h-[56px] flex-row items-center rounded-xl border bg-white pl-4 pr-1",
+          error
+            ? "border-red-500"
+            : focused
+              ? "border-[#009E45]"
+              : "border-[#CBD5E1]"
         )}
+        style={{ opacity: editable ? 1 : 0.6 }}
       >
-        {icon ? <View className="shrink-0">{icon}</View> : null}
+        {icon ? (
+          <View
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            className="shrink-0"
+          >
+            {icon}
+          </View>
+        ) : null}
 
         <TextInput
-          ref={ref}
-          placeholderTextColor="#94A3B8"
-          className={cn("ml-4 h-full flex-1 text-sm text-slate-900", className)}
           {...props}
+          ref={ref}
+          editable={editable}
+          accessibilityLabel={accessibilityLabel ?? label}
+          placeholderTextColor="#7B8798"
+          selectionColor="#009E45"
+          underlineColorAndroid="transparent"
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
+          className={cn(
+            "min-h-[54px] flex-1 py-3 text-[16px] text-[#07192D]",
+            icon ? "ml-3" : "",
+            className
+          )}
+          style={[
+  {
+    paddingRight: 12,   
+  },
+  style,
+]}
         />
 
         {rightAccessory}
       </View>
 
       {error ? (
-        <Text className="mt-1.5 text-xs text-red-500">{error}</Text>
+        <Text
+          accessibilityLiveRegion="polite"
+          className="mt-2 text-[13px] leading-5 text-red-700"
+        >
+          {error}
+        </Text>
       ) : null}
     </View>
   );
@@ -68,24 +124,38 @@ type PasswordFieldProps = AuthFieldProps;
 
 export function PasswordField(props: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
+  const editable = props.editable !== false;
 
   return (
     <AuthField
       {...props}
+      autoCapitalize="none"
+      autoCorrect={false}
       secureTextEntry={!visible}
       rightAccessory={
         <Pressable
           onPress={() => setVisible((current) => !current)}
+          disabled={!editable}
           accessibilityRole="button"
-          accessibilityLabel={visible ? "Hide password" : "Show password"}
-          hitSlop={8}
-          className="ml-3 h-9 w-9 shrink-0 items-center justify-center"
+          accessibilityLabel={
+            visible ? "Hide password" : "Show password"
+          }
+          accessibilityState={{ disabled: !editable }}
+          className="h-12 w-12 shrink-0 items-center justify-center rounded-lg active:bg-slate-100"
         >
           {visible ? (
-            <EyeOff size={20} color="#94A3B8" strokeWidth={1.8} />
-          ) : (
-            <Eye size={20} color="#94A3B8" strokeWidth={1.8} />
-          )}
+  <EyeOff
+    size={20}
+    color="#7B8798"
+    strokeWidth={1.8}
+  />
+) : (
+  <Eye
+    size={20}
+    color="#7B8798"
+    strokeWidth={1.8}
+  />
+)}
         </Pressable>
       }
     />

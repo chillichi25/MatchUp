@@ -104,7 +104,7 @@ function normalise(match: RawMatch, activeTeamId: string): MatchSummary {
   };
 }
 
-/** Confirmed fixtures for the active team, soonest first. */
+/** Scheduled fixtures, including past matches awaiting a result. */
 export async function getUpcomingMatches(): Promise<MatchSummary[]> {
   const team = await getActiveTeam();
 
@@ -112,22 +112,51 @@ export async function getUpcomingMatches(): Promise<MatchSummary[]> {
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("matches")
-    .select(MATCH_SELECT)
-    .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
-    .eq("status", "scheduled")
-    .order("match_date", { ascending: true })
-    .order("kick_off_time", { ascending: true });
+  const [matchesResponse, pendingResponse] = await Promise.all([
+    supabase
+      .from("matches")
+      .select(MATCH_SELECT)
+      .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
+      .eq("status", "scheduled")
+      .order("match_date", { ascending: true })
+      .order("kick_off_time", { ascending: true }),
 
-  if (error) {
-    console.error("UPCOMING MATCHES ERROR:", error);
-    throw error;
+    supabase.rpc("get_team_pending_match_results", {
+      p_team_id: team.id,
+    }),
+  ]);
+
+  if (matchesResponse.error) {
+    console.error("UPCOMING MATCHES ERROR:", matchesResponse.error);
+
+    throw new Error(
+      matchesResponse.error.message || "Couldn't load your matches."
+    );
   }
 
-  return ((data ?? []) as unknown as RawMatch[]).map((match) =>
-    normalise(match, team.id)
+  if (pendingResponse.error) {
+    console.error("PENDING MATCH RESULTS ERROR:", pendingResponse.error);
+
+    throw new Error(
+      pendingResponse.error.message ||
+        "Couldn't load the result confirmation statuses."
+    );
+  }
+
+  const pendingRows = (pendingResponse.data ?? []) as {
+    match_id: string;
+  }[];
+
+  const pendingMatchIds = new Set(
+    pendingRows.map((result) => result.match_id)
   );
+
+  return (
+    (matchesResponse.data ?? []) as unknown as RawMatch[]
+  ).map((match) => ({
+    ...normalise(match, team.id),
+    hasPendingResult: pendingMatchIds.has(match.id),
+  }));
 }
 
 /** A single fixture, only if the active team is one of the two participants. */
@@ -181,10 +210,14 @@ export async function getMatchHistory(): Promise<MatchHistoryItem[]> {
     .order("match_date", { ascending: false })
     .order("kick_off_time", { ascending: false });
 
-  if (error || !data) {
-    console.error("MATCH HISTORY ERROR:", error);
-    return [];
-  }
+  if (error) {
+  console.error("MATCH HISTORY ERROR:", error);
+  throw new Error(error.message || "Couldn't load your match history.");
+}
+
+if (!data) {
+  return [];
+}
 
   return ((data as unknown as RawMatch[])).map((match) => {
     const summary = normalise(match, team.id);
@@ -244,4 +277,129 @@ export async function cancelMatch(
     console.error("CANCEL MATCH ERROR:", error);
     throw new Error(error.message || "The match could not be cancelled.");
   }
+}
+
+export type PendingMatchResult = {
+  id: string;
+  match_id: string;
+  submitted_by: string;
+  submitted_by_team_id: string;
+  home_score: number;
+  away_score: number;
+  status: string;
+  created_at: string;
+};
+
+export async function getPendingMatchResult(
+  matchId: string
+): Promise<PendingMatchResult | null> {
+  const { data, error } = await supabase.rpc(
+    "get_pending_match_result",
+    { p_match_id: matchId }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message || "Couldn't load the submitted result."
+    );
+  }
+
+  return (data?.[0] as PendingMatchResult | undefined) ?? null;
+}
+
+export async function submitMatchResult(input: {
+  matchId: string;
+  homeScore: number;
+  awayScore: number;
+}): Promise<void> {
+  if (
+    !Number.isInteger(input.homeScore) ||
+    !Number.isInteger(input.awayScore) ||
+    input.homeScore < 0 ||
+    input.awayScore < 0 ||
+    input.homeScore > 2147483647 ||
+    input.awayScore > 2147483647
+  ) {
+    throw new Error("Enter a valid whole-number score for each team.");
+  }
+
+  const team = await getActiveTeam();
+
+  if (!team) {
+    throw new Error("Select a team before submitting a result.");
+  }
+
+  const { error } = await supabase.rpc("submit_match_result", {
+    p_match_id: input.matchId,
+    p_submitting_team_id: team.id,
+    p_home_score: input.homeScore,
+    p_away_score: input.awayScore,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Couldn't submit the result.");
+  }
+}
+
+export async function respondToMatchResult(input: {
+  resultRequestId: string;
+  response: "accepted" | "declined";
+}): Promise<void> {
+  const { error } = await supabase.rpc(
+    "respond_to_match_result",
+    {
+      p_result_request_id: input.resultRequestId,
+      p_response: input.response,
+    }
+  );
+
+  if (error) {
+    throw new Error(error.message || "Couldn't respond to the result.");
+  }
+}
+
+/** Past scheduled matches whose results this coach can confirm. */
+export async function getMatchesToConfirm(): Promise<MatchSummary[]> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError) {
+    throw new Error("Couldn't check your account.");
+  }
+
+  if (!user) {
+    return [];
+  }
+
+  const matches = await getUpcomingMatches();
+
+  const candidates = matches.filter(
+    (match) => match.isPast && match.hasPendingResult
+  );
+
+  const checked = await Promise.all(
+    candidates.map(async (match) => {
+      const result = await getPendingMatchResult(match.id);
+
+      const activeTeamId = match.isHome
+        ? match.homeTeam.teamId
+        : match.awayTeam.teamId;
+
+      if (
+        !result ||
+        result.submitted_by_team_id === activeTeamId ||
+        result.submitted_by === user.id
+      ) {
+        return null;
+      }
+
+      return match;
+    })
+  );
+
+  return checked
+    .filter((match): match is MatchSummary => match !== null)
+    .reverse();
 }

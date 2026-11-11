@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useActiveTeam } from "@/features/teams/hooks/use-teams";
+
 import {
   acceptFriendlyRequest,
   declineFriendlyRequest,
@@ -17,50 +19,84 @@ export const FRIENDLY_REQUEST_QUERY_KEYS = {
   incoming: ["friendly-requests", "incoming"] as const,
   outgoing: (statuses: string[]) =>
     ["friendly-requests", "outgoing", statuses] as const,
-  detail: (id: string) => ["friendly-requests", "detail", id] as const,
+  detail: (id: string) =>
+    ["friendly-requests", "detail", id] as const,
 };
 
 async function invalidateRequestData(
   queryClient: ReturnType<typeof useQueryClient>
 ) {
-  await queryClient.invalidateQueries({
-    queryKey: FRIENDLY_REQUEST_QUERY_KEYS.all,
-  });
-  await queryClient.invalidateQueries({ queryKey: FRIENDLY_QUERY_KEYS.all });
-  await queryClient.invalidateQueries({ queryKey: ["matches"] });
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: FRIENDLY_REQUEST_QUERY_KEYS.all,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: FRIENDLY_QUERY_KEYS.all,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: ["matches"],
+    }),
+  ]);
 }
 
 export function useIncomingRequests() {
+  const activeTeam = useActiveTeam();
+  const teamId = activeTeam.data?.id;
+
   return useQuery({
-    queryKey: FRIENDLY_REQUEST_QUERY_KEYS.incoming,
+    queryKey: [
+      ...FRIENDLY_REQUEST_QUERY_KEYS.incoming,
+      teamId,
+    ],
     queryFn: getIncomingRequests,
+    enabled: Boolean(teamId),
   });
 }
 
 export function useOutgoingRequests() {
+  const activeTeam = useActiveTeam();
+  const teamId = activeTeam.data?.id;
+
   return useQuery({
-    queryKey: FRIENDLY_REQUEST_QUERY_KEYS.outgoing(["pending"]),
+    queryKey: [
+      ...FRIENDLY_REQUEST_QUERY_KEYS.outgoing(["pending"]),
+      teamId,
+    ],
     queryFn: getOutgoingRequests,
+    enabled: Boolean(teamId),
   });
 }
 
 export function useOutgoingRequestHistory() {
+  const activeTeam = useActiveTeam();
+  const teamId = activeTeam.data?.id;
+
   return useQuery({
-    queryKey: FRIENDLY_REQUEST_QUERY_KEYS.outgoing([
-      "accepted",
-      "declined",
-      "cancelled",
-      "expired",
-    ]),
+    queryKey: [
+      ...FRIENDLY_REQUEST_QUERY_KEYS.outgoing([
+        "accepted",
+        "declined",
+        "cancelled",
+        "expired",
+      ]),
+      teamId,
+    ],
     queryFn: getOutgoingRequestHistory,
+    enabled: Boolean(teamId),
   });
 }
 
 export function useFriendlyRequestDetail(requestId: string) {
+  const activeTeam = useActiveTeam();
+  const teamId = activeTeam.data?.id;
+
   return useQuery({
-    queryKey: FRIENDLY_REQUEST_QUERY_KEYS.detail(requestId),
+    queryKey: [
+      ...FRIENDLY_REQUEST_QUERY_KEYS.detail(requestId),
+      teamId,
+    ],
     queryFn: () => getFriendlyRequestDetail(requestId),
-    enabled: Boolean(requestId),
+    enabled: Boolean(requestId && teamId),
   });
 }
 
@@ -83,7 +119,8 @@ export function useAcceptFriendlyRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (requestId: string) => acceptFriendlyRequest(requestId),
+    mutationFn: (requestId: string) =>
+      acceptFriendlyRequest(requestId),
     onSuccess: async () => {
       await invalidateRequestData(queryClient);
     },
@@ -94,7 +131,8 @@ export function useDeclineFriendlyRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (requestId: string) => declineFriendlyRequest(requestId),
+    mutationFn: (requestId: string) =>
+      declineFriendlyRequest(requestId),
     onSuccess: async () => {
       await invalidateRequestData(queryClient);
     },
@@ -105,7 +143,8 @@ export function useWithdrawFriendlyRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (requestId: string) => withdrawFriendlyRequest(requestId),
+    mutationFn: (requestId: string) =>
+      withdrawFriendlyRequest(requestId),
     onSuccess: async () => {
       await invalidateRequestData(queryClient);
     },

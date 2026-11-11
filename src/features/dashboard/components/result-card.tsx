@@ -4,91 +4,99 @@ import { Pressable, Text, View } from "react-native";
 
 import { Avatar } from "@/components/ui/avatar";
 import type { RecentResult } from "@/features/matches/services/recent-results.service";
+
 import { getDateParts } from "../utils/format-date";
 
-const resultStyles: Record<RecentResult["result"], string> = {
-  win: "bg-green-100 text-[#00A638]",
-  draw: "bg-slate-100 text-slate-600",
-  loss: "bg-red-100 text-red-500",
-};
-
-const resultLabels: Record<RecentResult["result"], string> = {
-  win: "Won",
-  draw: "Draw",
-  loss: "Lost",
-};
+const RESULT_STYLES = {
+  win: { label: "Won", background: "#E4F5EB", color: "#007A35" },
+  draw: { label: "Drawn", background: "#F1F5F9", color: "#475569" },
+  loss: { label: "Lost", background: "#FEF2F2", color: "#B91C1C" },
+} satisfies Record<
+  RecentResult["result"],
+  { label: string; background: string; color: string }
+>;
 
 export function ResultCard({ result }: { result: RecentResult }) {
   const router = useRouter();
   const { weekday, day, month } = getDateParts(result.matchDate);
+  const { teamName, clubName, badgeUrl } = result.opponent;
+  const title = teamName || clubName || "Opponent";
+  const subtitle = clubName && clubName !== title ? clubName : null;
+  const outcome = RESULT_STYLES[result.result];
+  const scoreColor = result.result === "draw" ? "#07192D" : outcome.color;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${result.opponent.clubName} result, ${resultLabels[result.result]}`}
-      onPress={() => router.push("/matches")}
-      className="flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
+      accessibilityLabel={[
+        title,
+        subtitle,
+        `${weekday} ${day} ${month}`,
+        outcome.label,
+        `Your team ${result.myScore}, opponent ${result.opponentScore}`,
+      ]
+        .filter(Boolean)
+        .join(", ")}
+      accessibilityHint="Opens match details"
+      onPress={() => router.push(`/matches/${result.id}` as never)}
+      className="flex-row overflow-hidden rounded-2xl border border-slate-200 bg-white active:bg-slate-50"
     >
-      <View className="w-[42px] shrink-0 flex-col items-center justify-center rounded-xl bg-slate-50 py-1.5">
-        <Text className="text-[9px] font-semibold text-slate-500">{weekday}</Text>
-
-        <Text className="text-[22px] font-bold leading-none text-[#00B83F]">
+      <View className="w-[54px] shrink-0 self-stretch items-center justify-center border-r border-slate-200 bg-slate-100 py-2">
+        <Text className="text-[9px] font-semibold text-slate-500">
+          {weekday}
+        </Text>
+        <Text className="text-[24px] font-bold leading-none text-[#009E45]">
           {day}
         </Text>
-
         <Text className="mt-1 text-[9px] font-semibold text-slate-500">
           {month}
         </Text>
       </View>
 
-      <Avatar uri={result.opponent.badgeUrl} name={result.opponent.clubName} size={44} />
+      <View className="min-w-0 flex-1 flex-row items-center gap-3 p-3">
+        <Avatar uri={badgeUrl} name={clubName || title} size={40} />
 
-      <View className="min-w-0 flex-1">
-        <Text className="text-[13px] font-bold text-slate-950" numberOfLines={1}>
-          {result.opponent.clubName}
-        </Text>
-
-        <Text className="mt-0.5 text-[11px] text-slate-500" numberOfLines={1}>
-          {result.opponent.teamName}
-        </Text>
-
-        <View
-          className={`mt-1.5 self-start rounded-full px-2 py-0.5 ${
-            resultStyles[result.result]
-          }`}
-        >
+        <View className="min-w-0 flex-1">
           <Text
-            className={`text-[9px] font-semibold ${
-              result.result === "win"
-                ? "text-[#00A638]"
-                : result.result === "loss"
-                  ? "text-red-500"
-                  : "text-slate-600"
-            }`}
+            numberOfLines={1}
+            className="text-[14px] font-bold text-[#07192D]"
           >
-            {resultLabels[result.result]}
+            {title}
           </Text>
+
+          {subtitle ? (
+            <Text
+              numberOfLines={1}
+              className="mt-0.5 text-[12px] text-[#596B80]"
+            >
+              {subtitle}
+            </Text>
+          ) : null}
+
+          <View
+            className="mt-1.5 self-start rounded-full px-2 py-0.5"
+            style={{ backgroundColor: outcome.background }}
+          >
+            <Text
+              className="text-[10px] font-semibold"
+              style={{ color: outcome.color }}
+            >
+              {outcome.label}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <View className="flex-row shrink-0 items-center gap-2">
-        <Text className="text-[15px] font-bold tracking-wide text-slate-950">
+        <View className="shrink-0 flex-row items-center gap-1.5">
           <Text
-            className={
-              result.result === "win"
-                ? "text-[#00B83F]"
-                : result.result === "loss"
-                  ? "text-red-500"
-                  : "text-slate-950"
-            }
+            className="text-[16px] font-bold text-[#07192D]"
+            style={{ fontVariant: ["tabular-nums"] }}
           >
-            {result.myScore}
+            <Text style={{ color: scoreColor }}>{result.myScore}</Text>
+            {" – "}
+            {result.opponentScore}
           </Text>
-          <Text className="text-slate-700"> - </Text>
-          {result.opponentScore}
-        </Text>
-
-        <ChevronRight size={18} color="#94A3B8" strokeWidth={2} />
+          <ChevronRight size={17} color="#64748B" strokeWidth={1.8} />
+        </View>
       </View>
     </Pressable>
   );

@@ -8,11 +8,21 @@ import {
   X,
 } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Input } from "@/components/ui/input";
 import { CalendarPicker } from "@/features/matches/components/calendar-picker";
+import { LocationPicker } from "@/features/clubs/components/location-picker";
 
 import {
   AGE_GROUPS,
@@ -25,7 +35,13 @@ import {
 import type { FriendlyFilters } from "../types";
 import { formatDateWithYear } from "../utils/format";
 
-type Screen =
+
+const GREEN = "#009E45";
+const NAVY = "#07192D";
+const MUTED = "#596B80";
+const BORDER = "#CBD5E1";
+
+type FilterScreen =
   | "main"
   | "age"
   | "date"
@@ -36,7 +52,20 @@ type Screen =
   | "format"
   | "venue";
 
-type Option = { label: string; value: string };
+type DetailScreen = Exclude<FilterScreen, "main">;
+
+type OptionScreen =
+  | "age"
+  | "distance"
+  | "level"
+  | "gender"
+  | "format"
+  | "venue";
+
+type Option = {
+  label: string;
+  value: string;
+};
 
 type FriendlyFiltersModalProps = {
   filters: FriendlyFilters;
@@ -45,19 +74,19 @@ type FriendlyFiltersModalProps = {
   onApply: (filters: FriendlyFilters) => void;
 };
 
-const SCREEN_TITLES: Record<Exclude<Screen, "main">, string> = {
+const SCREEN_TITLES: Record<DetailScreen, string> = {
   age: "Age group",
   date: "Date",
   location: "Location",
   distance: "Distance",
   level: "Level",
-  gender: "Gender",
+  gender: "Team category",
   format: "Match format",
   venue: "Venue",
 };
 
 const SCREEN_INTROS: Record<
-  Exclude<Screen, "main">,
+  DetailScreen,
   { title: string; description: string }
 > = {
   age: {
@@ -70,53 +99,67 @@ const SCREEN_INTROS: Record<
   },
   location: {
     title: "Where are you looking?",
-    description: "Use your club location or search from another town or city.",
+    description:
+      "Use your club location or search from another town or city.",
   },
   distance: {
     title: "How far can you travel?",
-    description: "Choose your search radius.",
+    description:
+      "Choose how far from your search location to look.",
   },
   level: {
-    title: "What level are you looking for?",
+    title: "Find the right level",
     description: "Choose the level that suits your team.",
   },
   gender: {
-    title: "Which teams are you looking for?",
+    title: "Which teams?",
     description: "Choose a team category.",
   },
   format: {
-    title: "What format are you looking for?",
-    description: "Choose the match format for your team.",
+    title: "Choose a match format",
+    description: "Find matches with the right team size.",
   },
   venue: {
-    title: "Where do you want to play?",
-    description: "Choose the preferred venue.",
+    title: "Home or away?",
+    description: "Choose your preferred match venue.",
   },
 };
 
-const OPTIONS: Record<
-  "age" | "distance" | "level" | "gender" | "format" | "venue",
-  Option[]
-> = {
+const OPTIONS: Record<OptionScreen, Option[]> = {
   age: [
     { label: "Any age group", value: "" },
-    ...AGE_GROUPS.map((value) => ({ label: value, value })),
+    ...AGE_GROUPS.map((value) => ({
+      label: value,
+      value,
+    })),
   ],
   distance: [
     { label: "Any distance", value: "" },
-    ...DISTANCES.map((value) => ({ label: `${value} miles`, value })),
+    ...DISTANCES.map((value) => ({
+      label: `Within ${value} miles`,
+      value,
+    })),
   ],
   level: [
     { label: "Any level", value: "" },
-    ...LEVELS.map((value) => ({ label: value, value })),
+    ...LEVELS.map((value) => ({
+      label: value,
+      value,
+    })),
   ],
   gender: [
     { label: "Any", value: "" },
-    ...GENDERS.map((value) => ({ label: value, value })),
+    ...GENDERS.map((value) => ({
+      label: value,
+      value,
+    })),
   ],
   format: [
     { label: "Any format", value: "" },
-    ...MATCH_FORMATS.map((value) => ({ label: value, value })),
+    ...MATCH_FORMATS.map((value) => ({
+      label: value,
+      value,
+    })),
   ],
   venue: [
     { label: "Any venue", value: "" },
@@ -127,41 +170,73 @@ const OPTIONS: Record<
   ],
 };
 
+function isOptionScreen(
+  screen: FilterScreen
+): screen is OptionScreen {
+  return Object.prototype.hasOwnProperty.call(OPTIONS, screen);
+}
+
 export function FriendlyFiltersModal({
   filters,
   defaultLocation,
   onClose,
   onApply,
 }: FriendlyFiltersModalProps) {
-  const [screen, setScreen] = useState<Screen>("main");
+  const [screen, setScreen] = useState<FilterScreen>("main");
 
   const [age, setAge] = useState(filters.age);
   const [level, setLevel] = useState(filters.level);
   const [gender, setGender] = useState(filters.gender);
   const [format, setFormat] = useState(filters.format);
   const [date, setDate] = useState(filters.date);
+  const [quick, setQuick] = useState(filters.quick);
   const [distance, setDistance] = useState(filters.distance);
   const [venue, setVenue] = useState(filters.venue);
-
   const [location, setLocation] = useState(filters.location);
+
   const [useCustomLocation, setUseCustomLocation] = useState(
     Boolean(filters.location)
   );
 
-  const customLocation = useCustomLocation ? location.trim() : "";
+  const isMain = screen === "main";
+  const customLocation = useCustomLocation
+    ? location.trim()
+    : "";
 
   const activeCount = [
     age,
     level,
     gender,
     format,
-    date,
+    date || quick,
     distance,
     venue,
     customLocation,
   ].filter(Boolean).length;
 
+  const intro = isMain ? null : SCREEN_INTROS[screen];
+
+  const venueLabel =
+    VENUE_OPTIONS.find((option) => option.value === venue)
+      ?.label || "Any venue";
+
+  const locationIncomplete =
+    useCustomLocation && !location.trim();
+
+  function handleBack() {
+    if (isMain) {
+      onClose();
+    } else {
+      setScreen("main");
+    }
+  }
+
   function apply() {
+    if (locationIncomplete) {
+      setScreen("location");
+      return;
+    }
+
     onApply({
       ...filters,
       age,
@@ -169,6 +244,7 @@ export function FriendlyFiltersModal({
       gender,
       format,
       date,
+      quick,
       distance,
       venue,
       location: customLocation,
@@ -181,6 +257,7 @@ export function FriendlyFiltersModal({
     setGender("");
     setFormat("");
     setDate("");
+    setQuick("");
     setDistance("");
     setVenue("");
     setLocation("");
@@ -189,246 +266,359 @@ export function FriendlyFiltersModal({
   }
 
   function selectOption(value: string) {
-    if (screen === "age") setAge(value);
-    else if (screen === "distance") setDistance(value);
-    else if (screen === "level") setLevel(value);
-    else if (screen === "gender") setGender(value);
-    else if (screen === "format") setFormat(value);
-    else if (screen === "venue") setVenue(value);
+    switch (screen) {
+      case "age":
+        setAge(value);
+        break;
+      case "distance":
+        setDistance(value);
+        break;
+      case "level":
+        setLevel(value);
+        break;
+      case "gender":
+        setGender(value);
+        break;
+      case "format":
+        setFormat(value);
+        break;
+      case "venue":
+        setVenue(value);
+        break;
+    }
 
     setScreen("main");
   }
 
   function currentOptionValue(): string {
-    if (screen === "age") return age;
-    if (screen === "distance") return distance;
-    if (screen === "level") return level;
-    if (screen === "gender") return gender;
-    if (screen === "format") return format;
-    if (screen === "venue") return venue;
-    return "";
+    switch (screen) {
+      case "age":
+        return age;
+      case "distance":
+        return distance;
+      case "level":
+        return level;
+      case "gender":
+        return gender;
+      case "format":
+        return format;
+      case "venue":
+        return venue;
+      default:
+        return "";
+    }
   }
 
-  const isMain = screen === "main";
-  const isOptionScreen = screen in OPTIONS;
-
   return (
-    <Modal visible transparent={false} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView className="flex-1 bg-[#F8FAFC]">
+    <Modal
+      visible
+      transparent={false}
+      animationType="slide"
+      onRequestClose={handleBack}
+    >
+      <SafeAreaView
+        className="flex-1"
+        style={{ backgroundColor: "#F4F9FA" }}
+      >
         <Header
-          title={isMain ? "Filters" : SCREEN_TITLES[screen as Exclude<Screen, "main">]}
+          title={isMain ? "Filters" : SCREEN_TITLES[screen]}
           leading={
             <CircleButton
               label={isMain ? "Close filters" : "Back to filters"}
-              onPress={isMain ? onClose : () => setScreen("main")}
+              onPress={handleBack}
             >
               {isMain ? (
-                <X size={19} color="#0F172A" />
+                <X size={19} color="#334155" />
               ) : (
-                <ArrowLeft size={19} color="#0F172A" />
+                <ArrowLeft size={19} color="#334155" />
               )}
             </CircleButton>
           }
         />
 
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-4 pb-8"
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View className="mt-6">
-            <Text className="text-[24px] font-bold tracking-tight text-slate-950">
-              {isMain ? "Find the right match" : SCREEN_INTROS[screen as Exclude<Screen, "main">].title}
+          <ScrollView
+            key={screen}
+            className="flex-1"
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingTop: 24,
+              paddingBottom: 28,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <Text
+              accessibilityRole="header"
+              className="text-[26px] font-bold tracking-tight text-[#07192D]"
+            >
+              {isMain ? "Find the right match" : intro?.title}
             </Text>
-            <Text className="mt-1 text-[13px] leading-[18px] text-slate-500">
+
+            <Text className="mt-1 text-[13px] leading-5 text-[#596B80]">
               {isMain
                 ? "Choose what matters for your team."
-                : SCREEN_INTROS[screen as Exclude<Screen, "main">].description}
+                : intro?.description}
             </Text>
-          </View>
 
-          {isMain ? (
-            <>
-              <View className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
-                <FilterRow
-                  label="Age group"
-                  value={age || "Any age group"}
-                  onPress={() => setScreen("age")}
+            {isMain ? (
+              <>
+                <FilterGroup title="Team preferences">
+                  <FilterRow
+                    label="Age group"
+                    value={age || "Any age group"}
+                    active={Boolean(age)}
+                    onPress={() => setScreen("age")}
+                  />
+                  <Divider />
+
+                  <FilterRow
+                    label="Level"
+                    value={level || "Any level"}
+                    active={Boolean(level)}
+                    onPress={() => setScreen("level")}
+                  />
+                  <Divider />
+
+                  <FilterRow
+                    label="Team category"
+                    value={gender || "Any"}
+                    active={Boolean(gender)}
+                    onPress={() => setScreen("gender")}
+                  />
+                  <Divider />
+
+                  <FilterRow
+                    label="Match format"
+                    value={format || "Any format"}
+                    active={Boolean(format)}
+                    onPress={() => setScreen("format")}
+                  />
+                </FilterGroup>
+
+                <FilterGroup title="When and where">
+                  <FilterRow
+                    label="Date"
+                    value={
+                      date
+                        ? formatDateWithYear(date)
+                        : quick === "this-week"
+                          ? "This week"
+                          : "Any date"
+                    }
+                    active={Boolean(date || quick)}
+                    onPress={() => setScreen("date")}
+                    trailing={
+                      <CalendarDays
+                        size={18}
+                        color={MUTED}
+                        strokeWidth={1.8}
+                      />
+                    }
+                  />
+                  <Divider />
+
+                  <FilterRow
+                    label="Location"
+                    value={
+                      customLocation ||
+                      (distance
+                        ? defaultLocation || "Club location"
+                        : "Any location")
+                    }
+                    active={Boolean(customLocation)}
+                    onPress={() => setScreen("location")}
+                  />
+                  <Divider />
+
+                  <FilterRow
+                    label="Distance"
+                    value={
+                      distance
+                        ? `Within ${distance} miles`
+                        : "Any distance"
+                    }
+                    active={Boolean(distance)}
+                    onPress={() => setScreen("distance")}
+                  />
+                  <Divider />
+
+                  <FilterRow
+                    label="Venue"
+                    value={venueLabel}
+                    active={Boolean(venue)}
+                    onPress={() => setScreen("venue")}
+                  />
+                </FilterGroup>
+
+                <View className="mt-3 flex-row items-start gap-2 px-1">
+                  <MapPin
+                    size={15}
+                    color={MUTED}
+                    strokeWidth={1.8}
+                    style={{ marginTop: 2 }}
+                  />
+
+                  <Text className="min-w-0 flex-1 text-[12px] leading-[18px] text-[#596B80]">
+                    {customLocation
+                      ? `When a distance is selected, it is measured from ${customLocation}.`
+                      : defaultLocation
+                        ? `Distance is measured from your club location in ${defaultLocation}.`
+                        : "Choose a location when using a distance filter."}
+                  </Text>
+                </View>
+              </>
+            ) : screen === "date" ? (
+              <View className="mt-6">
+                <CalendarPicker
+                  value={date}
+                  onChange={(next) => {
+                    setDate(next);
+                    setQuick("");
+                    setScreen("main");
+                  }}
+                  onClear={() => {
+                    setDate("");
+                    setQuick("");
+                    setScreen("main");
+                  }}
                 />
-                <Divider />
+              </View>
+            ) : screen === "location" ? (
+              <View className="mt-6">
+                <LocationOption
+                  title="Club location"
+                  subtitle={
+                    defaultLocation || "No club location available"
+                  }
+                  selected={!useCustomLocation}
+                  icon={<MapPin size={18} color={GREEN} />}
+                  onPress={() => {
+                    setUseCustomLocation(false);
+                    setLocation("");
+                  }}
+                />
+
+                <View className="mt-3">
+                  <LocationOption
+                    title="Another location"
+                    subtitle="Choose a different town or city"
+                    selected={useCustomLocation}
+                    icon={<Search size={18} color={GREEN} />}
+                    onPress={() => setUseCustomLocation(true)}
+                  />
+                </View>
+
+                {useCustomLocation ? (
+                  <View className="mt-5">
+                    <Text className="mb-2 text-[13px] font-semibold text-[#07192D]">
+                      Town or city
+                    </Text>
+
+                    <LocationPicker
+  value={location || null}
+  placeholder="Search town or city"
+  onChange={(selected) => {
+    setLocation(selected?.formatted ?? "");
+  }}
+/>
+
+                    <Text className="mt-2 text-[12px] leading-[18px] text-[#596B80]">
+                      Choose a distance to search around this location.
+                    </Text>
+                  </View>
+                ) : null}
 
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => setScreen("date")}
-                  className="min-h-[58px] flex-row items-center"
+                  accessibilityState={{
+                    disabled: locationIncomplete,
+                  }}
+                  disabled={locationIncomplete}
+                  onPress={() => {
+  Keyboard.dismiss();
+  setScreen("main");
+}}
+                  className="mt-6 min-h-[50px] items-center justify-center rounded-full px-5"
+                  style={{
+                    backgroundColor: locationIncomplete
+                      ? "#E2E8F0"
+                      : GREEN,
+                  }}
                 >
-                  <View className="min-w-0 flex-1 py-3">
-                    <Text className="text-[12px] font-semibold text-slate-950">
-                      Date
-                    </Text>
-                    <Text
-                      className={
-                        date
-                          ? "mt-0.5 text-[10px] font-medium text-brand"
-                          : "mt-0.5 text-[10px] text-slate-500"
-                      }
-                    >
-                      {date ? formatDateWithYear(date) : "Any date"}
-                    </Text>
-                  </View>
-                  <CalendarDays size={17} color="#64748B" />
+                  <Text
+                    className="text-[14px] font-semibold"
+                    style={{
+                      color: locationIncomplete
+                        ? "#64748B"
+                        : "#FFFFFF",
+                    }}
+                  >
+                    Done
+                  </Text>
                 </Pressable>
-
-                <Divider />
-
-                <FilterRow
-                  label="Location"
-                  value={customLocation || "Any location"}
-                  onPress={() => setScreen("location")}
-                />
-                <Divider />
-
-                <FilterRow
-                  label="Distance"
-                  value={distance ? `${distance} miles` : "Any distance"}
-                  onPress={() => setScreen("distance")}
-                />
-                <Divider />
-
-                <FilterRow
-                  label="Level"
-                  value={level || "Any level"}
-                  onPress={() => setScreen("level")}
-                />
-                <Divider />
-
-                <FilterRow
-                  label="Gender"
-                  value={gender || "Any"}
-                  onPress={() => setScreen("gender")}
-                />
-                <Divider />
-
-                <FilterRow
-                  label="Match format"
-                  value={format || "Any format"}
-                  onPress={() => setScreen("format")}
-                />
-                <Divider />
-
-                <FilterRow
-                  label="Venue"
-                  value={
-                    venue
-                      ? `${venue.charAt(0).toUpperCase()}${venue.slice(1)}`
-                      : "Any venue"
-                  }
-                  onPress={() => setScreen("venue")}
-                />
               </View>
+            ) : isOptionScreen(screen) ? (
+              <View className="mt-6 overflow-hidden rounded-2xl border border-[#CBD5E1] bg-white px-4">
+                {OPTIONS[screen].map((option, index) => (
+                  <View key={option.value || "any"}>
+                    {index > 0 ? <Divider /> : null}
 
-              <View className="mt-7 flex-row gap-3">
+                    <OptionRow
+                      label={option.label}
+                      selected={
+                        option.value === currentOptionValue()
+                      }
+                      onPress={() => selectOption(option.value)}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </ScrollView>
+
+          {isMain ? (
+            <View className="border-t border-slate-200 bg-white px-5 pb-3 pt-3">
+              {activeCount > 0 ? (
+                <Text className="mb-3 text-center text-[12px] text-[#596B80]">
+                  {activeCount}{" "}
+                  {activeCount === 1
+                    ? "filter selected"
+                    : "filters selected"}
+                </Text>
+              ) : null}
+
+              <View className="flex-row gap-3">
                 <Pressable
                   accessibilityRole="button"
                   onPress={reset}
-                  className="h-12 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm"
+                  className="min-h-[50px] flex-1 items-center justify-center rounded-full border border-[#CBD5E1] bg-white px-4"
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.65 : 1,
+                  })}
                 >
-                  <Text className="text-[13px] font-semibold text-slate-700">
+                  <Text className="text-[14px] font-semibold text-[#07192D]">
                     Reset all
                   </Text>
                 </Pressable>
 
                 <Pressable
-                  accessibilityRole="button"
-                  onPress={apply}
-                  className="h-12 flex-1 items-center justify-center rounded-2xl bg-brand shadow-sm"
-                >
-                  <Text className="text-[13px] font-bold text-white">
-                    Show matches{activeCount ? ` (${activeCount})` : ""}
-                  </Text>
-                </Pressable>
+  accessibilityRole="button"
+  onPress={apply}
+  className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-[#009E45] px-4 active:opacity-80"
+>
+  <Text className="text-[14px] font-semibold text-white">
+    Show matches
+  </Text>
+</Pressable>
               </View>
-            </>
-          ) : screen === "date" ? (
-            <View className="mt-6">
-              <CalendarPicker
-                value={date}
-                onChange={(next) => {
-                  setDate(next);
-                  setScreen("main");
-                }}
-                onClear={() => {
-                  setDate("");
-                  setScreen("main");
-                }}
-              />
-            </View>
-          ) : screen === "location" ? (
-            <View className="mt-6">
-              <LocationOption
-                title="Club location"
-                subtitle={defaultLocation || "No club location available"}
-                selected={!useCustomLocation}
-                onPress={() => {
-                  setUseCustomLocation(false);
-                  setLocation("");
-                }}
-              />
-
-              <LocationOption
-                title="Another location"
-                subtitle="Search from a different town or city"
-                selected={useCustomLocation}
-                onPress={() => setUseCustomLocation(true)}
-                className="mt-3"
-              />
-
-              {useCustomLocation ? (
-                <View className="mt-4">
-                  <Input
-                    placeholder="e.g. Manchester"
-                    value={location}
-                    onChangeText={setLocation}
-                    autoFocus
-                  />
-                </View>
-              ) : null}
-
-              <Pressable
-                accessibilityRole="button"
-                disabled={useCustomLocation && !location.trim()}
-                onPress={() => setScreen("main")}
-                className={
-                  useCustomLocation && !location.trim()
-                    ? "mt-4 h-12 items-center justify-center rounded-full bg-slate-200"
-                    : "mt-4 h-12 items-center justify-center rounded-full bg-brand shadow-sm"
-                }
-              >
-                <Text
-                  className={
-                    useCustomLocation && !location.trim()
-                      ? "text-[13px] font-bold text-slate-400"
-                      : "text-[13px] font-bold text-white"
-                  }
-                >
-                  Done
-                </Text>
-              </Pressable>
-            </View>
-          ) : isOptionScreen ? (
-            <View className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
-              {OPTIONS[screen as keyof typeof OPTIONS].map((option) => (
-                <OptionRow
-                  key={option.value || "any"}
-                  label={option.label}
-                  selected={option.value === currentOptionValue()}
-                  onPress={() => selectOption(option.value)}
-                />
-              ))}
             </View>
           ) : null}
-        </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
@@ -444,9 +634,11 @@ function Header({
   return (
     <View className="flex-row items-center px-4 pt-2">
       {leading}
-      <Text className="flex-1 text-center text-[17px] font-bold text-slate-950">
+
+      <Text className="flex-1 text-center text-[17px] font-bold text-[#07192D]">
         {title}
       </Text>
+
       <View className="h-11 w-11" />
     </View>
   );
@@ -466,44 +658,86 @@ function CircleButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      className="h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm"
+      className="h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white"
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.65 : 1,
+      })}
     >
       {children}
     </Pressable>
   );
 }
 
+function FilterGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <View className="mt-6">
+      <Text
+        accessibilityRole="header"
+        className="text-[15px] font-bold text-[#07192D]"
+      >
+        {title}
+      </Text>
+
+      <View className="mt-3 overflow-hidden rounded-2xl border border-[#CBD5E1] bg-white px-4">
+        {children}
+      </View>
+    </View>
+  );
+}
+
 function FilterRow({
   label,
   value,
+  active,
   onPress,
+  trailing,
 }: {
   label: string;
   value: string;
+  active: boolean;
   onPress: () => void;
+  trailing?: ReactNode;
 }) {
-  const isActive = !value.startsWith("Any") && value !== "Any";
-
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${label}, ${value}`}
       onPress={onPress}
-      className="min-h-[58px] flex-row items-center"
+      className="min-h-[68px] flex-row items-center gap-3 py-3"
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.65 : 1,
+      })}
     >
-      <View className="min-w-0 flex-1 py-3">
-        <Text className="text-[12px] font-semibold text-slate-950">{label}</Text>
+      <View className="min-w-0 flex-1">
+        <Text className="text-[14px] font-semibold text-[#07192D]">
+          {label}
+        </Text>
+
         <Text
-          numberOfLines={1}
-          className={
-            isActive
-              ? "mt-0.5 text-[10px] font-medium text-[#00A638]"
-              : "mt-0.5 text-[10px] text-slate-500"
-          }
+          numberOfLines={2}
+          className="mt-1 text-[12px] leading-[18px]"
+          style={{
+            color: active ? GREEN : MUTED,
+            fontWeight: active ? "600" : "400",
+          }}
         >
           {value}
         </Text>
       </View>
-      <ChevronRight size={17} color="#94A3B8" />
+
+      {trailing ?? (
+        <ChevronRight
+          size={18}
+          color={MUTED}
+          strokeWidth={1.8}
+        />
+      )}
     </Pressable>
   );
 }
@@ -522,23 +756,36 @@ function OptionRow({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      className="min-h-[52px] flex-row items-center justify-between border-b border-slate-100 py-3 last:border-b-0"
+      className="min-h-[58px] flex-row items-center justify-between gap-3 py-3"
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.65 : 1,
+      })}
     >
       <Text
-        className={
-          selected
-            ? "text-[13px] font-semibold text-slate-950"
-            : "text-[13px] font-medium text-slate-700"
-        }
+        className="min-w-0 flex-1 text-[14px] leading-5"
+        style={{
+          color: selected ? GREEN : NAVY,
+          fontWeight: selected ? "600" : "400",
+        }}
       >
         {label}
       </Text>
 
-      {selected ? (
-        <View className="h-6 w-6 items-center justify-center rounded-full bg-green-50">
-          <Check size={15} color="#00B83F" strokeWidth={2.5} />
-        </View>
-      ) : null}
+      <View
+        className="h-6 w-6 items-center justify-center rounded-full border"
+        style={{
+          backgroundColor: selected ? GREEN : "#FFFFFF",
+          borderColor: selected ? GREEN : BORDER,
+        }}
+      >
+        {selected ? (
+          <Check
+            size={15}
+            color="#FFFFFF"
+            strokeWidth={2.5}
+          />
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -547,52 +794,56 @@ function LocationOption({
   title,
   subtitle,
   selected,
+  icon,
   onPress,
-  className,
 }: {
   title: string;
   subtitle: string;
   selected: boolean;
+  icon: ReactNode;
   onPress: () => void;
-  className?: string;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      className={
-        selected
-          ? `flex-row items-center gap-3 rounded-2xl border border-green-200 bg-[#F4FCF6] px-4 py-4 shadow-sm ${className ?? ""}`
-          : `flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm ${className ?? ""}`
-      }
+      className="flex-row items-center gap-3 rounded-2xl border px-4 py-4"
+      style={({ pressed }) => ({
+        backgroundColor: selected ? "#EFFAF3" : "#FFFFFF",
+        borderColor: selected ? "#A7DDBA" : BORDER,
+        opacity: pressed ? 0.75 : 1,
+      })}
     >
-      <View
-        className={
-          selected
-            ? "h-10 w-10 items-center justify-center rounded-xl bg-green-100"
-            : "h-10 w-10 items-center justify-center rounded-xl bg-slate-50"
-        }
-      >
-        {title === "Club location" ? (
-          <MapPin size={18} color={selected ? "#00B83F" : "#94A3B8"} />
-        ) : (
-          <Search size={18} color={selected ? "#00B83F" : "#94A3B8"} />
-        )}
+      <View className="h-10 w-10 items-center justify-center rounded-xl bg-green-50">
+        {icon}
       </View>
 
       <View className="min-w-0 flex-1">
-        <Text className="text-[13px] font-semibold text-slate-950">{title}</Text>
-        <Text numberOfLines={1} className="mt-0.5 text-[11px] text-slate-500">
+        <Text className="text-[14px] font-semibold text-[#07192D]">
+          {title}
+        </Text>
+
+        <Text className="mt-1 text-[12px] leading-[18px] text-[#596B80]">
           {subtitle}
         </Text>
       </View>
 
-      {selected ? (
-        <View className="h-6 w-6 items-center justify-center rounded-full bg-brand">
-          <Check size={14} color="#FFFFFF" strokeWidth={2.5} />
-        </View>
-      ) : null}
+      <View
+        className="h-6 w-6 items-center justify-center rounded-full border"
+        style={{
+          backgroundColor: selected ? GREEN : "#FFFFFF",
+          borderColor: selected ? GREEN : BORDER,
+        }}
+      >
+        {selected ? (
+          <Check
+            size={14}
+            color="#FFFFFF"
+            strokeWidth={2.5}
+          />
+        ) : null}
+      </View>
     </Pressable>
   );
 }

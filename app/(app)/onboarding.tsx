@@ -1,6 +1,17 @@
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import Svg, {
+  Defs,
+  LinearGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
 
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/providers/auth-provider";
@@ -9,7 +20,9 @@ import { getActiveTeam } from "@/features/teams/services/active-team.service";
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { height } = useWindowDimensions();
   const { session, isLoading } = useSession();
+
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -22,49 +35,124 @@ export default function OnboardingScreen() {
       try {
         setError(null);
 
-        // Guarantee the profile row exists before any team lookup.
         await ensureProfile();
+
+        if (!active) return;
 
         const activeTeam = await getActiveTeam();
 
         if (!active) return;
 
-        // No active team means club onboarding is not complete.
         router.replace(activeTeam ? "/dashboard" : "/clubs");
       } catch {
         if (!active) return;
+
         setError(
-          "We couldn't finish setting up your account. Please try again."
+          "We couldn't load your account. Please try again."
         );
       }
     }
 
-    run();
+    void run();
 
     return () => {
       active = false;
     };
   }, [isLoading, session, router, attempt]);
 
-  if (error) {
-    return (
-      <View className="flex-1 items-center justify-center gap-4 bg-[#F8FAFC] px-8">
-        <Text className="text-center text-sm text-slate-600">{error}</Text>
-        <Button
-          variant="outline"
-          fullWidth={false}
-          onPress={() => setAttempt((current) => current + 1)}
-        >
-          Try again
-        </Button>
-      </View>
-    );
+  if (!isLoading && !session) {
+    return <Redirect href="/login" />;
   }
 
   return (
-    <View className="flex-1 items-center justify-center gap-4 bg-[#F8FAFC]">
-      <ActivityIndicator color="#00B83F" />
-      <Text className="text-sm text-slate-500">Setting things up…</Text>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+        }}
+      >
+        <Svg width="100%" height="100%">
+          <Defs>
+            <LinearGradient
+              id="onboardingBackground"
+              gradientUnits="userSpaceOnUse"
+              x1={0}
+              y1={0}
+              x2={0}
+              y2={height * 0.65}
+            >
+              <Stop offset="0" stopColor="#A8DCFA" />
+              <Stop offset="1" stopColor="#FFFFFF" />
+            </LinearGradient>
+          </Defs>
+
+          <Rect
+            width="100%"
+            height="100%"
+            fill="url(#onboardingBackground)"
+          />
+        </Svg>
+      </View>
+
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        {error ? (
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              padding: 24,
+              borderRadius: 24,
+              backgroundColor: "#FFFFFF",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              style={{
+                color: "#526176",
+                fontSize: 15,
+                lineHeight: 23,
+                textAlign: "center",
+                marginBottom: 20,
+              }}
+            >
+              {error}
+            </Text>
+
+            <Button
+              variant="outline"
+              fullWidth={false}
+              onPress={() => {
+                setError(null);
+                setAttempt((current) => current + 1);
+              }}
+            >
+              Try again
+            </Button>
+          </View>
+        ) : (
+          <View
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Loading your account"
+            accessibilityState={{ busy: true }}
+          >
+          </View>
+        )}
+      </View>
     </View>
   );
 }

@@ -17,7 +17,10 @@ export default function EditFriendlyScreen() {
   if (detail.isLoading) {
     return (
       <Screen>
-        <PageHeader title="Edit Match" fallbackHref={`/friendlies/${id}`} />
+        <PageHeader
+          title="Edit match"
+          fallbackHref={`/friendlies/${id}`}
+        />
         <LoadingState />
       </Screen>
     );
@@ -28,8 +31,9 @@ export default function EditFriendlyScreen() {
   if (!friendly) {
     return (
       <Screen>
-        <PageHeader title="Edit Match" fallbackHref="/matches" />
-        <View className="px-4 pt-6">
+        <PageHeader title="Edit match" fallbackHref="/matches" />
+
+        <View className="px-5 pt-6">
           <EmptyState
             title="Match not found"
             description="This match may have been removed."
@@ -40,29 +44,46 @@ export default function EditFriendlyScreen() {
   }
 
   if (!friendly.isOwner || friendly.status !== "open") {
-    return <Redirect href={`/friendlies/${friendly.id}` as never} />;
+    return (
+      <Redirect href={`/friendlies/${friendly.id}` as never} />
+    );
   }
 
   return (
     <Screen>
-      <PageHeader title="Edit Match" fallbackHref={`/friendlies/${friendly.id}`} />
+      <PageHeader
+        title="Edit match"
+        fallbackHref={`/friendlies/${friendly.id}`}
+      />
 
-      <ScreenScroll contentContainerClassName="px-5 pb-32">
-        <View className="mt-6">
-          <Text className="text-[26px] font-bold tracking-tight text-slate-900">
+      <ScreenScroll
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 24,
+          paddingBottom: 128,
+        }}
+      >
+        <View>
+          <Text
+            accessibilityRole="header"
+            className="text-[26px] font-bold tracking-tight text-[#07192D]"
+          >
             Update match details
           </Text>
-          <Text className="mt-0.5 text-[13px] leading-5 text-slate-500">
-            Update your match details and save your changes.
+
+          <Text className="mt-1 text-[13px] leading-5 text-[#596B80]">
+            Make changes to your match below.
           </Text>
         </View>
 
         <FriendlyForm
+          key={friendly.id}
           mode="edit"
           friendlyId={friendly.id}
           teamId={friendly.teamId}
           teamName={friendly.teamName}
           clubName={friendly.clubName}
+          clubBadgeUrl={friendly.badgeUrl}
           initialValues={{
             matchDate: friendly.matchDate,
             kickOffTime: friendly.kickOff?.slice(0, 5) ?? "",
@@ -71,7 +92,13 @@ export default function EditFriendlyScreen() {
             location: friendly.location ?? "",
             notes: friendly.notes ?? "",
           }}
-          onSaved={(savedId) => router.replace(`/friendlies/${savedId}` as never)}
+          onSaved={(savedId) => {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace(`/friendlies/${savedId}` as never);
+  }
+}}
         />
       </ScreenScroll>
     </Screen>

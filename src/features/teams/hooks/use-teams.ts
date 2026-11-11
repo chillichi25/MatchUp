@@ -29,12 +29,44 @@ export function useSetActiveTeam() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (teamId: string) => setActiveTeam(teamId),
+    mutationFn: async (teamId: string) => {
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: ["chat"],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ["matches"],
+        }),
+        queryClient.cancelQueries({
+          queryKey: ["friendly-requests"],
+        }),
+      ]);
+
+      return setActiveTeam(teamId);
+    },
+
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: TEAM_QUERY_KEYS.active });
       await queryClient.invalidateQueries({
-        queryKey: TEAM_QUERY_KEYS.available,
+        queryKey: TEAM_QUERY_KEYS.active,
       });
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: TEAM_QUERY_KEYS.available,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["chat"],
+          refetchType: "all",
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["matches"],
+          refetchType: "all",
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["friendly-requests"],
+          refetchType: "all",
+        }),
+      ]);
     },
   });
 }

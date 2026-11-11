@@ -1,41 +1,11 @@
-import {
-  ChartColumn,
-  Handshake,
-  ShieldX,
-  Trophy,
-} from "lucide-react-native";
+import { ChartColumn, Handshake, ShieldX, Trophy } from "lucide-react-native";
 import { Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
-function StatColumn({
-  icon,
-  value,
-  label,
-  showDivider,
-}: {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-  showDivider: boolean;
-}) {
-  return (
-    <View
-      className={`flex-1 items-center px-1 ${
-        showDivider ? "border-r border-slate-100" : ""
-      }`}
-    >
-      {icon}
-
-      <Text className="mt-1.5 text-[15px] font-bold text-slate-950">
-        {value}
-      </Text>
-
-      <Text className="mt-0.5 text-[10px] font-medium text-slate-500">
-        {label}
-      </Text>
-    </View>
-  );
-}
+const RING_SIZE = 84;
+const RING_CENTER = RING_SIZE / 2;
+const RING_RADIUS = 36;
+const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export function TeamPerformance({
   played,
@@ -48,91 +18,98 @@ export function TeamPerformance({
   draws: number;
   losses: number;
 }) {
-  const winRate = played === 0 ? 0 : Math.round((wins / played) * 100);
+  const winShare = played > 0 ? wins / played : 0;
+  const winRate = Math.round(winShare * 100);
 
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (winRate / 100) * circumference;
+  const stats = [
+    { label: "Played", value: played, Icon: ChartColumn },
+    { label: "Won", value: wins, Icon: Trophy },
+    { label: "Drawn", value: draws, Icon: Handshake },
+    { label: "Lost", value: losses, Icon: ShieldX },
+  ];
 
   return (
     <View className="mt-8">
-      <Text className="text-[18px] font-bold tracking-tight text-slate-950">
-        Team Performance
+      <Text
+        accessibilityRole="header"
+        className="text-[18px] font-bold tracking-tight text-[#07192D]"
+      >
+        Team performance
       </Text>
 
-      <View className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 pb-3.5 pt-4 shadow-sm">
-        <View className="items-center">
-          <View className="h-[120px] w-[120px] items-center justify-center">
+      <View className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+        <View
+          accessible
+          accessibilityLabel={`${winRate}% win rate. ${wins} wins from ${played} matches.`}
+          className="flex-row items-center gap-4"
+        >
+          <View
+            className="shrink-0 items-center justify-center"
+            style={{ width: RING_SIZE, height: RING_SIZE }}
+          >
             <Svg
-              width={120}
-              height={120}
-              viewBox="0 0 120 120"
+              width={RING_SIZE}
+              height={RING_SIZE}
+              viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
               style={{ transform: [{ rotate: "-90deg" }] }}
             >
               <Circle
-                cx={60}
-                cy={60}
-                r={radius}
+                cx={RING_CENTER}
+                cy={RING_CENTER}
+                r={RING_RADIUS}
                 fill="none"
                 stroke="#DCFCE7"
-                strokeWidth={9}
+                strokeWidth={7}
               />
 
-              <Circle
-                cx={60}
-                cy={60}
-                r={radius}
-                fill="none"
-                stroke="#00B83F"
-                strokeWidth={9}
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={offset}
-              />
+              {winShare > 0 ? (
+                <Circle
+                  cx={RING_CENTER}
+                  cy={RING_CENTER}
+                  r={RING_RADIUS}
+                  fill="none"
+                  stroke="#009E45"
+                  strokeWidth={7}
+                  strokeLinecap="round"
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeDashoffset={CIRCUMFERENCE * (1 - winShare)}
+                />
+              ) : null}
             </Svg>
 
-            <View className="absolute items-center justify-center">
-              <Text className="text-[25px] font-bold tracking-tight text-slate-950">
-                {winRate}%
-              </Text>
-            </View>
+            <Text className="absolute text-[20px] font-bold text-[#07192D]">
+              {winRate}%
+            </Text>
           </View>
 
-          <Text className="-mt-0.5 text-[12px] font-medium text-slate-500">
-            Win Rate
-          </Text>
+          <View className="min-w-0 flex-1">
+            <Text className="text-[14px] font-bold text-[#07192D]">
+              Win rate
+            </Text>
+            <Text className="mt-0.5 text-[12px] leading-[18px] text-[#596B80]">
+              {wins} {wins === 1 ? "win" : "wins"} from {played}{" "}
+              {played === 1 ? "match" : "matches"}
+            </Text>
+          </View>
         </View>
 
-        <View className="my-3 h-px bg-slate-100" />
-
-        <View className="flex-row">
-          <StatColumn
-            icon={<ChartColumn size={21} color="#64748B" strokeWidth={2} />}
-            value={played}
-            label="Played"
-            showDivider
-          />
-
-          <StatColumn
-            icon={<Trophy size={21} color="#64748B" strokeWidth={2} />}
-            value={wins}
-            label="Wins"
-            showDivider
-          />
-
-          <StatColumn
-            icon={<Handshake size={21} color="#64748B" strokeWidth={2} />}
-            value={draws}
-            label="Draws"
-            showDivider
-          />
-
-          <StatColumn
-            icon={<ShieldX size={21} color="#64748B" strokeWidth={2} />}
-            value={losses}
-            label="Losses"
-            showDivider={false}
-          />
+        <View className="mt-3 flex-row border-t border-slate-100 pt-3">
+          {stats.map(({ label, value, Icon }, index) => (
+            <View
+              key={label}
+              className={`flex-1 items-center px-1 ${
+                index < stats.length - 1 ? "border-r border-slate-100" : ""
+              }`}
+            >
+              <Icon size={18} color="#64748B" strokeWidth={1.8} />
+              <Text className="mt-1 text-[15px] font-bold text-[#07192D]">
+                {value}
+              </Text>
+              <Text className="mt-0.5 text-center text-[11px] text-[#596B80]">
+                {label}
+              </Text>
+            </View>
+          ))}
         </View>
       </View>
     </View>

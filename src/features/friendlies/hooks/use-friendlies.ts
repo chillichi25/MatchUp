@@ -24,6 +24,7 @@ export function useFriendlyDiscovery(filters: FriendlyFilters) {
   return useQuery({
     queryKey: FRIENDLY_QUERY_KEYS.discovery(filters),
     queryFn: () => getFriendlyDiscovery(filters),
+    placeholderData: (previousData) => previousData,
   });
 }
 

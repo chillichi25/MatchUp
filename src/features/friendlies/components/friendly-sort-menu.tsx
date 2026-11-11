@@ -7,9 +7,9 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import type { FriendlyFilters } from "../types";
 
 const SORT_OPTIONS: { value: FriendlyFilters["sort"]; label: string }[] = [
-  { value: "soonest", label: "Soonest" },
-  { value: "nearest", label: "Nearest" },
-  { value: "newest", label: "Newest" },
+  { label: "Soonest first", value: "soonest" },
+{ label: "Nearest", value: "nearest" },
+{ label: "Recently posted", value: "newest" },
 ];
 
 type FriendlySortMenuProps = {

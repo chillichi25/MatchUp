@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase/client";
 
@@ -8,12 +12,17 @@ import {
   getMyConversations,
   getUnreadChatCount,
 } from "../services/chat.service";
-import { markConversationAsRead, sendMessage } from "../services/chat-message.service";
+
+import {
+  markConversationAsRead,
+  sendMessage,
+} from "../services/chat-message.service";
 
 export const CHAT_QUERY_KEYS = {
   conversations: ["chat", "conversations"] as const,
   unread: ["chat", "unread"] as const,
-  conversation: (id: string) => ["chat", "conversation", id] as const,
+  conversation: (id: string) =>
+    ["chat", "conversation", id] as const,
 };
 
 export function useMyConversations() {
@@ -32,40 +41,79 @@ export function useConversation(conversationId: string) {
 }
 
 /**
- * Unread badge count, refreshed whenever a message is inserted or read so the
- * tab badge stays current without polling.
+ * Keeps the unread badge current.
+ * Each effect creates its own channel and removes it on cleanup.
  */
 export function useUnreadChatCount() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    let disposed = false;
+
+    const channelName = [
+      "chat-unread-badge",
+      Date.now().toString(36),
+      Math.random().toString(36).slice(2),
+    ].join("-");
+
+    function refreshUnread() {
+      if (disposed) return;
+
+      void queryClient.invalidateQueries({
+        queryKey: CHAT_QUERY_KEYS.unread,
+      });
+    }
+
+    function refreshConversations() {
+      if (disposed) return;
+
+      void queryClient.invalidateQueries({
+        queryKey: CHAT_QUERY_KEYS.conversations,
+      });
+    }
+
     const channel = supabase
-      .channel("chat-unread-badge")
+      .channel(channelName)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "match_messages" },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "match_messages",
+        },
         () => {
-          void queryClient.invalidateQueries({
-            queryKey: CHAT_QUERY_KEYS.unread,
-          });
-          void queryClient.invalidateQueries({
-            queryKey: CHAT_QUERY_KEYS.conversations,
-          });
+          refreshUnread();
+          refreshConversations();
         }
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "match_messages" },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "match_messages",
+        },
         () => {
-          void queryClient.invalidateQueries({
-            queryKey: CHAT_QUERY_KEYS.unread,
-          });
+          refreshUnread();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          // Refresh after connecting or reconnecting.
+          refreshUnread();
+          refreshConversations();
+        }
+      });
 
     return () => {
-      void supabase.removeChannel(channel);
+      disposed = true;
+
+      void supabase.removeChannel(channel).catch((error) => {
+        console.error(
+          "CHAT UNREAD CHANNEL CLEANUP ERROR:",
+          error
+        );
+      });
     };
   }, [queryClient]);
 
@@ -79,11 +127,14 @@ export function useSendMessage(conversationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (message: string) => sendMessage(conversationId, message),
+    mutationFn: (message: string) =>
+      sendMessage(conversationId, message),
+
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: CHAT_QUERY_KEYS.conversation(conversationId),
       });
+
       await queryClient.invalidateQueries({
         queryKey: CHAT_QUERY_KEYS.conversations,
       });
@@ -91,13 +142,20 @@ export function useSendMessage(conversationId: string) {
   });
 }
 
-export function useMarkConversationAsRead(conversationId: string) {
+export function useMarkConversationAsRead(
+  conversationId: string
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => markConversationAsRead(conversationId),
+    mutationFn: () =>
+      markConversationAsRead(conversationId),
+
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.unread });
+      await queryClient.invalidateQueries({
+        queryKey: CHAT_QUERY_KEYS.unread,
+      });
+
       await queryClient.invalidateQueries({
         queryKey: CHAT_QUERY_KEYS.conversations,
       });
